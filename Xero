@@ -155,8 +155,11 @@ def verify_cookie(cookie_value):
             print(Fore.RED + f"An HTTP Error Occurred While Verifying Your Cookie, Status Code Is: {response.status_code} - {response.text}" + Style.RESET_ALL)
             return False
 
+    except requests.exceptions.RequestException as e:
+        print(Fore.RED + f"Network or HTTP error occurred: {e}" + Style.RESET_ALL)
+        return False
     except Exception as e:
-        print(Fore.RED + f"Another Error Occurred While Verifying Your Cookie, Status Code Is: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"Another Error Occurred While Verifying Your Cookie: {e}" + Style.RESET_ALL)
         return False
         
 def download_file(url, destination, binary=False):
@@ -174,6 +177,9 @@ def download_file(url, destination, binary=False):
         else:
             print(Fore.RED + f"An Error Occurred While Downloading the File: {os.path.basename(destination)}." + Style.RESET_ALL)
             return None
+    except requests.exceptions.RequestException as e:
+        print(Fore.RED + f"Network error occurred during download: {e}" + Style.RESET_ALL)
+        return None
     except Exception as e:
         print(Fore.RED + f"Another Error Occurred While Downloading the File: {os.path.basename(destination)}: {e}" + Style.RESET_ALL)
         return None
@@ -281,7 +287,7 @@ def inject_cookies_and_appstorage():
         except Exception as e:
             print(Fore.RED + f"Error injecting cookie for {package_name}: {e}" + Style.RESET_ALL)
 
-    print(Fore.GREEN + "Cookie and appStorage injection completed for all packages." + Style.RESET_ALL) 
+    print(Fore.GREEN + "Cookie and appStorage injection completed for all packages." + Style.RESET_ALL)
 
 def get_roblox_packages():
     packages = []
