@@ -766,6 +766,34 @@ def edit_hwid_file(hwid_file_path):
         print(Fore.RED + f"An Error Occurred While Editing Hwid For Fluxus On Your Device!" + Style.RESET_ALL)
         return None
 
+def find_roblox_data_paths():
+    base_path = "/data/data"
+    paths = []
+    for folder in os.listdir(base_path):
+        if folder.startswith("com.roblox.") and folder != 'com.roblox.client':
+            path = os.path.join(base_path, folder, "files/appData/LocalStorage/appStorage.json")
+            if os.path.isfile(path):
+                paths.append(path)
+    return paths
+
+def read_roblox_data(data_path, retries=3):
+    attempt = 0
+    while attempt < retries:
+        try:
+            with open(data_path, 'r') as file:
+                data = json.load(file)
+                user_id = data.get("UserId")
+                username = data.get("Username")
+                if user_id is not None and username is not None:
+                    return user_id, username
+                else:
+                    attempt += 1
+        except Exception as e:
+            attempt += 1
+            time.sleep(1) 
+
+    return False, False
+
 def force_roblox(packages):
     try:
         full_command = f"pkill -f {packages}"
