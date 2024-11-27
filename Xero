@@ -535,32 +535,35 @@ def format_server_link(input_link):
     print(Fore.RED + "Invalid Input! Please Check And Write Correct Game ID Or Private Server Link!" + Style.RESET_ALL)
     return None
 
-def save_data_to_file(filename, data):
-    with open(filename, "w") as file:
-        for item in data:
-            file.write(f"{item[0]},{item[1]}\n")
-
-def load_data_from_file(filename):
-    data = []
-    if os.path.exists(filename):  # Check if the file exists before attempting to read
-        with open(filename, "r") as file:
-            for line in file:
-                item = line.strip().split(",", 1)
-                if len(item) == 2:  # Ensure correct data format
-                    data.append((item[0], item[1]))
-    return data
-
 def save_server_links(server_links):
-    save_data_to_file(SERVER_LINKS_FILE, server_links)
+    with open(SERVER_LINKS_FILE, "w") as file:
+        for package, link in server_links:
+            file.write(f"{package},{link}\n")
 
 def load_server_links():
-    return load_data_from_file(SERVER_LINKS_FILE)
+    server_links = []
+    if os.path.exists(SERVER_LINKS_FILE):
+        with open(SERVER_LINKS_FILE, "r") as file:
+            for line in file:
+                package, link = line.strip().split(",", 1)
+                server_links.append((package, link))
+    return server_links
 
+# Function to save accounts to file
 def save_accounts(accounts):
-    save_data_to_file(ACCOUNTS_FILE, accounts)
+    with open(ACCOUNTS_FILE, "w") as file:
+        for package, user_id in accounts:
+            file.write(f"{package},{user_id}\n")
 
+# Function to load accounts from file
 def load_accounts():
-    return load_data_from_file(ACCOUNTS_FILE)
+    accounts = []
+    if os.path.exists(ACCOUNTS_FILE):
+        with open(ACCOUNTS_FILE, "r") as file:
+            for line in file:
+                package, user_id = line.strip().split(",", 1)
+                accounts.append((package, user_id))
+    return accounts
 
 def find_userid_from_file(file_path):
     try:
@@ -680,7 +683,7 @@ def save_cache():
 
 def check_user_online(user_id):
     max_retries = 3
-    delay = 1
+    delay = 2
 
     session = requests.Session() 
     primary_url = "https://presence.roblox.com/v1/presence/users"
@@ -802,16 +805,22 @@ def edit_lite(package_name):
 
 def create_fps_file():
     try:
-        directory = "/storage/emulated/0/Delta/Autoexecute"
+        directories = [
+            "/storage/emulated/0/Fluxus/Autoexecute",
+            "/storage/emulated/0/Codex/Autoexecute",
+            "/storage/emulated/0/Arceus X/Autoexecute",
+            "/storage/emulated/0/Delta/Autoexecute",
+            "/storage/emulated/0/Cryptic/Autoexecute"
+        ]
         
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        
-        file_path = os.path.join(directory, "XeroHub_FpsBoost.txt")
-        
-        with open(file_path, "w") as file:
-            file.write('loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/FPS%20Boost"))()')
-        pass
+        for directory in directories:
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            
+            file_path = os.path.join(directory, "XeroHub_FpsBoost.txt")
+            
+            with open(file_path, "w") as file:
+                file.write('loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/FPS%20Boost"))()')
     
     except Exception as e:
         pass
@@ -1216,34 +1225,37 @@ def main():
 
             input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
-        elif setup_type == "6":
+        elif setup_type == 6:
             print(Fore.GREEN + "Auto Setup User IDs from each package's appStorage.json..." + Style.RESET_ALL)
-            packages = get_roblox_packages()
+            packages = get_roblox_packages()  # Lấy danh sách các package
             accounts = []
 
             for package_name in packages:
                 file_path = f'/data/data/{package_name}/files/appData/LocalStorage/appStorage.json'
-                user_id = find_userid_from_file(file_path)
-                
+                user_id = find_userid_from_file(file_path)  # Tìm user ID trong file
+
                 if user_id:
-                    accounts.append((package_name, user_id))
+                    accounts.append((package_name, user_id))  # Lưu tài khoản nếu tìm thấy user ID
                     print(Fore.GREEN + f"Package Found Is: {package_name} And User ID Is: {user_id}")
                 else:
                     print(Fore.RED + f"User ID Not Found For Package Is: {package_name}" + Style.RESET_ALL)
 
-            save_accounts(accounts)
-            save_cache()
+            save_accounts(accounts)  # Lưu danh sách tài khoản
+            save_cache()  # Lưu cache
             print(Fore.GREEN + "User IDs saved from appStorage.json!" + Style.RESET_ALL)
 
-            # Prompt for server link
+            # Nhập Game ID hoặc private server link
             server_link = input(Fore.CYAN + "Please Enter Game ID Or Private Server Link: " + Style.RESET_ALL)
-            formatted_link = format_server_link(server_link)
+            formatted_link = format_server_link(server_link)  # Định dạng lại server link
 
             if formatted_link:
-                server_links = [(package_name, formatted_link) for package_name in packages]
+                server_links = [(package_name, formatted_link) for package_name in packages]  # Lưu server link
                 save_server_links(server_links)
                 print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
+            else:
+                print(Fore.RED + "Invalid server link format!" + Style.RESET_ALL)
+
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)  # Đợi người dùng nhấn Enter để thoát
 
         elif setup_type == "7":  # Auto Login via Cookie
             inject_cookies_and_appstorage()
