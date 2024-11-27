@@ -677,8 +677,7 @@ def save_cache():
         print(Fore.RED + f"Error saving cache: {e}" + Style.RESET_ALL)
 
 def check_user_online(user_id):
-    max_retries = 3
-    delay = 1
+    max_retries = 11
 
     for attempt in range(max_retries):
         try:
@@ -688,21 +687,29 @@ def check_user_online(user_id):
             with requests.Session() as session:
                 primary_response = session.post(primary_url, headers=headers, data=body, timeout=7)
             primary_response.raise_for_status()
-            primary_data = primary_response.json()
-            primary_presence_type = primary_data["userPresences"][0]["userPresenceType"]
-            primary_last_location = primary_data["userPresences"][0].get("lastLocation", None)
 
-            if primary_last_location == "Website":
-                print(Fore.YELLOW + f"{user_id} is currently on the Website. Rejoin recommended." + Style.RESET_ALL)
-                primary_presence_type = 0 
+            primary_data = primary_response.json()
+            if "userPresences" not in primary_data or not primary_data["userPresences"]:
+                print(Fore.RED + f"Error: No presence data found for user {user_id}." + Style.RESET_ALL)
+                return None, None
+
+            primary_presence = primary_data["userPresences"][0]
+            primary_presence_type = primary_presence.get("userPresenceType")
+            primary_last_location = primary_presence.get("lastLocation", None)
+
+            if primary_presence_type == 2:
+                message = f"{user_id} is currently in the game." if primary_last_location != "Website" else f"{user_id} was on the Website but now in the game. Recheck required."
+                print(Fore.GREEN + message + Style.RESET_ALL)
+            else:
+                message = f"{user_id} is currently on the Website. Rejoin recommended." if primary_last_location == "Website" else f"{user_id} is currently not in the game or on the website."
+                print(Fore.RED + message + Style.RESET_ALL)
 
             return primary_presence_type, primary_last_location
 
         except requests.exceptions.RequestException as e:
             print(Fore.RED + f"Error checking online status for user {user_id} (Attempt {attempt + 1}): {e}" + Style.RESET_ALL)
             if attempt < max_retries - 1:
-                time.sleep(delay)
-                delay *= 2  
+                time.sleep(2 ** attempt)  
             else:
                 return None, None
 
