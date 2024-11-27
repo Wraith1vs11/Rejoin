@@ -478,8 +478,8 @@ def launch_roblox(package_name, server_link, num_packages, package_statuses):
         update_status_table(package_statuses)
 
         commands = [
-            (['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], 3),
-            (['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], 4)
+            (['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], 1),
+            (['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], 11)
         ]
         
         for command, sleep_time in commands:
