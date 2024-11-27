@@ -766,16 +766,6 @@ def edit_hwid_file(hwid_file_path):
         print(Fore.RED + f"An Error Occurred While Editing Hwid For Fluxus On Your Device!" + Style.RESET_ALL)
         return None
 
-def find_roblox_data_paths():
-    base_path = "/data/data"
-    paths = []
-    for folder in os.listdir(base_path):
-        if folder.startswith("com.roblox.") and folder != 'com.roblox.client':
-            path = os.path.join(base_path, folder, "files/appData/LocalStorage/appStorage.json")
-            if os.path.isfile(path):
-                paths.append(path)
-    return paths
-
 def read_roblox_data(data_path, retries=3):
     attempt = 0
     while attempt < retries:
@@ -813,7 +803,7 @@ def force_roblox(packages):
 
 def logout_roblox():
     global logged_in_usernames
-    roblox_paths = find_roblox_data_paths()
+    roblox_paths = get_roblox_packages()
     if not roblox_paths:
         print("No Roblox accounts found.")
         return
