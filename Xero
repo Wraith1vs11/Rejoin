@@ -766,6 +766,88 @@ def edit_hwid_file(hwid_file_path):
         print(Fore.RED + f"An Error Occurred While Editing Hwid For Fluxus On Your Device!" + Style.RESET_ALL)
         return None
 
+def force_roblox(packages):
+    try:
+        full_command = f"pkill -f {packages}"
+        subprocess.run(
+            full_command,
+            check=True,
+            timeout=10,
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+    except subprocess.TimeoutExpired:
+        pass
+    except subprocess.CalledProcessError as e:
+        pass
+    time.sleep(1)
+
+def logout_roblox():
+    global logged_in_usernames
+    roblox_paths = find_roblox_data_paths()
+    if not roblox_paths:
+        print("No Roblox accounts found.")
+        return
+
+    accounts = []
+    print("Available Roblox accounts:")
+    for i, data_path in enumerate(roblox_paths, start=1):
+        userid, username = read_roblox_data(data_path)
+        if userid and username:
+            accounts.append((userid, username, data_path))
+            print(f"{i}. Username: {username}, UserId: {userid}")
+
+    if not accounts:
+        print("No Roblox accounts found.")
+        return
+
+    print("Enter the number of the account to log out, '0' to log out all accounts, or 'q' to quit:")
+    choice = input().strip()
+    if choice.lower() == 'q':
+        return
+
+    try:
+        if choice == '0':
+            for userid, username, data_path in accounts:
+                try:
+                    roblox_package = data_path.split(os.sep)[3]
+                    force_roblox(roblox_package)
+                    appstorage_path = os.path.join(data_path)
+                    print(f"Logging out account: {username}, path: {appstorage_path}")
+                    os.remove(appstorage_path)
+                    try:
+                        logged_in_usernames.remove(username)
+                    except:
+                        pass
+                    print(f"Logged out account: {username}")
+                except:
+                    pass
+        else:
+            choice_index = int(choice) - 1
+            if 0 <= choice_index < len(accounts):
+                userid, username, data_path = accounts[choice_index]
+                roblox_package = data_path.split(os.sep)[3]
+                force_roblox(roblox_package)
+                appstorage_path = os.path.join(data_path)
+                print(f"Logging out account: {username}, path: {appstorage_path}")
+                os.remove(appstorage_path)
+                try:
+                    logged_in_usernames.remove(username)
+                except:
+                    pass
+                print(f"Logged out account: {username}")
+            else:
+                print("Invalid choice. Choice index out of range.")
+    except ValueError:
+        print("Invalid input. Please enter a number.")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        print(f"Error: {e}")
+
+logged_in_usernames = set()
+
 def main():
     print_header()
     load_cache()  
@@ -780,11 +862,12 @@ def main():
             "Same Game ID Or Private Server Link",
             "Different Private Server Or Game ID",
             "Clear User IDs And/Or Private Server Links",
-            "List",
             "Automatically Set Up User ID For Roblox Games",
             "Roblox Account Login Using Cookies",       
             "Automatically Same Hwid For Fluxus",   
-            "Automatically Send Webhook",      
+            "Automatically Send Webhook",    
+            "Automatically Log Out Of Account In Roblox",  
+            "List",  
             "Exit"
         ]
 
@@ -992,18 +1075,6 @@ def main():
             input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
         elif setup_type == "6":
-            accounts = load_accounts()
-            server_links = load_server_links()
-
-            if accounts and server_links:
-                headers = ["Account", "Server", "Game ID", "Username"]
-                rows = [(package, server, game_id, get_username(game_id)) for (package, game_id), (_, server) in zip(accounts, server_links)]
-                create_dynamic_table(headers, rows)
-            else:
-                print(Fore.RED + "No accounts or server links to display." + Style.RESET_ALL)
-            input(Fore.GREEN + "\nPress Enter to return to the menu..." + Style.RESET_ALL)
-
-        elif setup_type == "7":
             print(Fore.GREEN + "Auto Setup User IDs from each package's appStorage.json..." + Style.RESET_ALL)
             packages = get_roblox_packages()
             accounts = []
@@ -1032,11 +1103,11 @@ def main():
                 print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
             input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
-        elif setup_type == "8":  # Auto Login via Cookie
+        elif setup_type == "7":  # Auto Login via Cookie
             inject_cookies_and_appstorage()
             input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
-        elif setup_type == "9":
+        elif setup_type == "8":
             packages = get_roblox_packages()
 
             if not packages:
@@ -1053,10 +1124,25 @@ def main():
                     print(Fore.RED + f"Hwid Not Found On Your Device!" + Style.RESET_ALL)
             input(Fore.CYAN + "Please Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
 
-        elif setup_type == "10":
+        elif setup_type == "9":
             setup_webhook()
 
+        elif setup_type == "10":
+            logout_roblox()
+
         elif setup_type == "11":
+            accounts = load_accounts()
+            server_links = load_server_links()
+
+            if accounts and server_links:
+                headers = ["Account", "Server", "Game ID", "Username"]
+                rows = [(package, server, game_id, get_username(game_id)) for (package, game_id), (_, server) in zip(accounts, server_links)]
+                create_dynamic_table(headers, rows)
+            else:
+                print(Fore.RED + "No accounts or server links to display." + Style.RESET_ALL)
+            input(Fore.GREEN + "\nPress Enter to return to the menu..." + Style.RESET_ALL)
+
+        elif setup_type == "12":
             global stop_webhook_thread
             stop_webhook_thread = True  
             break 
