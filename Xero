@@ -8,13 +8,11 @@ import crypto
 import platform
 import subprocess
 import re
-import os
 import hashlib
 import sqlite3
 import shutil
 import signal
 import requests
-from colorama import Fore, Back, Style, init
 from threading import Lock
 from urllib.parse import urlparse
 
