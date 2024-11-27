@@ -1,0 +1,30 @@
+const FHKGOHEDMLPC = ["123", "55"];
+const loGPNhIJGBYh = []; 
+
+let yWLyMncZYMEi = false;
+let wWvfweKxIJeY = false;
+
+for (let i = 0; i < FHKGOHEDMLPC.length; i++) {
+    if (script_key === FHKGOHEDMLPC[i]) {
+        yWLyMncZYMEi = true;
+        break;
+    }
+}
+
+for (let i = 0; i < loGPNhIJGBYh.length; i++) {
+    if (script_key === loGPNhIJGBYh[i]) {
+        wWvfweKxIJeY = true;
+        break;
+    }
+}
+
+if (wWvfweKxIJeY) {
+    console.warn("Your Key Has Been Blacklisted!");
+    console.warn("You Can't Use My Script With Blacklisted Key!");
+} else if (yWLyMncZYMEi) {
+    console.log("Your Key Is Correct.");
+    console.log("You Can Use My Script.");
+} else {
+    console.warn("Your Key Is Wrong And Incorrect!");
+    console.warn("You Can't Use My Script With Incorrect And Wrong Key!");
+}
