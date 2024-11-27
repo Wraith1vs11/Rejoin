@@ -1003,7 +1003,6 @@ def main():
 
         menu_options = [
             "Start Auto Rejoin Roblox Game",
-            "Set User IDs For Each Package",
             "Same Game ID Or Private Server Link",
             "Different Private Server Or Game ID",
             "Clear User IDs And/Or Private Server Links",
