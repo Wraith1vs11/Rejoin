@@ -43,7 +43,8 @@ def print_header():
                                   |___/           |__/               
 """
     print(Fore.LIGHTCYAN_EX + header + Style.RESET_ALL)
-    print(Fore.LIGHTMAGENTA_EX + "Improved By Axionix For Xero Hub" + Style.RESET_ALL)
+    print(Fore.LIGHTMAGENTA_EX + "Created By Shiroo, Optimized And Improved By Sxionax For Xero Hub" + Style.RESET_ALL)
+    print(Fore.LIGHTMAGENTA_EX + "Xero Hub's Discord Is: https://discord.gg/fqNxktESCH" + Style.RESET_ALL)
 
 def create_dynamic_menu(options):
     # Determine the maximum width needed for the menu
