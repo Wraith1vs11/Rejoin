@@ -478,8 +478,8 @@ def launch_roblox(package_name, server_link, num_packages, package_statuses):
         update_status_table(package_statuses)
 
         commands = [
-            (['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], 15),
-            (['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], 20)
+            (['am', 'start', '-n', f'{package_name}/com.roblox.client.startup.ActivitySplash', '-d', server_link], 3),
+            (['am', 'start', '-n', f'{package_name}/com.roblox.client.ActivityProtocolLaunch', '-d', server_link], 4)
         ]
         
         for command, sleep_time in commands:
@@ -533,35 +533,32 @@ def format_server_link(input_link):
     print(Fore.RED + "Invalid Input! Please Check And Write Correct Game ID Or Private Server Link!" + Style.RESET_ALL)
     return None
 
+def save_data_to_file(filename, data):
+    with open(filename, "w") as file:
+        for item in data:
+            file.write(f"{item[0]},{item[1]}\n")
+
+def load_data_from_file(filename):
+    data = []
+    if os.path.exists(filename):  
+        with open(filename, "r") as file:
+            for line in file:
+                item = line.strip().split(",", 1)
+                if len(item) == 2:  # Ensure correct data format
+                    data.append((item[0], item[1]))
+    return data
+
 def save_server_links(server_links):
-    with open(SERVER_LINKS_FILE, "w") as file:
-        for package, link in server_links:
-            file.write(f"{package},{link}\n")
+    save_data_to_file(SERVER_LINKS_FILE, server_links)
 
 def load_server_links():
-    server_links = []
-    if os.path.exists(SERVER_LINKS_FILE):
-        with open(SERVER_LINKS_FILE, "r") as file:
-            for line in file:
-                package, link = line.strip().split(",", 1)
-                server_links.append((package, link))
-    return server_links
+    return load_data_from_file(SERVER_LINKS_FILE)
 
-# Function to save accounts to file
 def save_accounts(accounts):
-    with open(ACCOUNTS_FILE, "w") as file:
-        for package, user_id in accounts:
-            file.write(f"{package},{user_id}\n")
+    save_data_to_file(ACCOUNTS_FILE, accounts)
 
-# Function to load accounts from file
 def load_accounts():
-    accounts = []
-    if os.path.exists(ACCOUNTS_FILE):
-        with open(ACCOUNTS_FILE, "r") as file:
-            for line in file:
-                package, user_id = line.strip().split(",", 1)
-                accounts.append((package, user_id))
-    return accounts
+    return load_data_from_file(ACCOUNTS_FILE)
 
 def find_userid_from_file(file_path):
     try:
@@ -681,25 +678,23 @@ def save_cache():
 
 def check_user_online(user_id):
     max_retries = 3
-    delay = 2
-
-    session = requests.Session() 
-    primary_url = "https://presence.roblox.com/v1/presence/users"
-    headers = {'Content-Type': 'application/json'}
-    body = json.dumps({"userIds": [user_id]})
+    delay = 1
 
     for attempt in range(max_retries):
         try:
-            primary_response = session.post(primary_url, headers=headers, data=body, timeout=7)
+            primary_url = "https://presence.roblox.com/v1/presence/users"
+            headers = {'Content-Type': 'application/json'}
+            body = json.dumps({"userIds": [user_id]})
+            with requests.Session() as session:
+                primary_response = session.post(primary_url, headers=headers, data=body, timeout=7)
             primary_response.raise_for_status()
-
             primary_data = primary_response.json()
             primary_presence_type = primary_data["userPresences"][0]["userPresenceType"]
             primary_last_location = primary_data["userPresences"][0].get("lastLocation", None)
 
             if primary_last_location == "Website":
-                print(Fore.RED + f"{user_id} Still In The Roblox Game Menu But Not Joined!" + Style.RESET_ALL)
-                primary_presence_type = 0  # Set presence type to offline to trigger a rejoin
+                print(Fore.YELLOW + f"{user_id} is currently on the Website. Rejoin recommended." + Style.RESET_ALL)
+                primary_presence_type = 0 
 
             return primary_presence_type, primary_last_location
 
@@ -709,12 +704,7 @@ def check_user_online(user_id):
                 time.sleep(delay)
                 delay *= 2  
             else:
-                print(Fore.RED + f"Max retries reached for user {user_id}. Unable to check online status." + Style.RESET_ALL)
                 return None, None
-
-        except Exception as e:
-            print(Fore.RED + f"Unexpected error for user {user_id}: {e}" + Style.RESET_ALL)
-            return None, None
 
 def get_hwid_file_path(package_name):
     directory = f"/data/data/{package_name}/app_assets/content/"
@@ -808,7 +798,8 @@ def create_fps_file():
             "/storage/emulated/0/Codex/Autoexecute",
             "/storage/emulated/0/Arceus X/Autoexecute",
             "/storage/emulated/0/Delta/Autoexecute",
-            "/storage/emulated/0/Cryptic/Autoexecute"
+            "/storage/emulated/0/Cryptic/Autoexecute",
+            "/storage/emulated/0/VegaX/Autoexecute"
         ]
         
         for directory in directories:
@@ -904,7 +895,6 @@ def delete_folders_from_all_packages():
                 delete_folders_and_cache(package_name)
                 print(Fore.GREEN + f"Folder deletion completed for {package_name}." + Style.RESET_ALL)
 
-                # Sau khi hoàn thành việc xóa, tạo FPS.txt
                 create_fps_file()
 
             except Exception as e:
@@ -1006,6 +996,7 @@ def main():
 
         menu_options = [
             "Start Auto Rejoin Roblox Game",
+            "Set User IDs For Each Package",
             "Same Game ID Or Private Server Link",
             "Different Private Server Or Game ID",
             "Clear User IDs And/Or Private Server Links",
@@ -1015,7 +1006,7 @@ def main():
             "Automatically Send Webhook",    
             "Automatically Log Out Of Account In Roblox",  
             "Reduce 40% Of Graphics For Roblox",  
-            "List",
+            "List",  
             "Exit"
         ]
 
@@ -1143,6 +1134,28 @@ def main():
                     continue
 
         elif setup_type == "2":
+            accounts = []
+            packages = get_roblox_packages()
+            for package_name in packages:
+                user_input = input(f"Enter the user ID or username for {package_name}: ")
+                user_id = None
+                if user_input.isdigit():
+                    user_id = user_input
+                else:
+                    print(f"Retrieving user ID for username: {user_input}...")
+                    user_id = asyncio.run(get_user_id(user_input))
+                    if user_id is None:
+                        print(Fore.RED + "Failed to retrieve user ID. Please enter the user ID manually." + Style.RESET_ALL)
+                        user_id = input("Enter the user ID: ")
+                accounts.append((package_name, user_id))
+                print(f"Set {package_name} to user ID: {user_id}")
+
+            save_accounts(accounts)
+            save_cache()
+            print(Fore.GREEN + "User IDs saved!" + Style.RESET_ALL)
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
+
+        elif setup_type == "3":
             server_link = input(Fore.CYAN + "Please Enter Game ID Or Private Server Link: " + Style.RESET_ALL)
             formatted_link = format_server_link(server_link)
 
@@ -1154,7 +1167,7 @@ def main():
                 
             input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
-        elif setup_type == "3":
+        elif setup_type == "4":
             packages = get_roblox_packages()
             server_links = []
 
@@ -1168,7 +1181,7 @@ def main():
             save_server_links(server_links)  
             input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
-        elif setup_type == "4":
+        elif setup_type == "5":
             clear_choice = input(Fore.GREEN + "What do you want to clear?\n1. Clear User IDs\n2. Clear Server Links\n3. Clear Both\nEnter choice: " + Style.RESET_ALL)
 
             if clear_choice == "1":
@@ -1200,40 +1213,43 @@ def main():
 
             input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
-        elif setup_type == "5":
+        elif setup_type == 6:
             print(Fore.GREEN + "Auto Setup User IDs from each package's appStorage.json..." + Style.RESET_ALL)
-            packages = get_roblox_packages()
+            packages = get_roblox_packages()  # Lấy danh sách các package
             accounts = []
 
             for package_name in packages:
                 file_path = f'/data/data/{package_name}/files/appData/LocalStorage/appStorage.json'
-                user_id = find_userid_from_file(file_path)
-                
+                user_id = find_userid_from_file(file_path)  # Tìm user ID trong file
+
                 if user_id:
-                    accounts.append((package_name, user_id))
+                    accounts.append((package_name, user_id))  # Lưu tài khoản nếu tìm thấy user ID
                     print(Fore.GREEN + f"Package Found Is: {package_name} And User ID Is: {user_id}")
                 else:
                     print(Fore.RED + f"User ID Not Found For Package Is: {package_name}" + Style.RESET_ALL)
 
-            save_accounts(accounts)
-            save_cache()
+            save_accounts(accounts)  # Lưu danh sách tài khoản
+            save_cache()  # Lưu cache
             print(Fore.GREEN + "User IDs saved from appStorage.json!" + Style.RESET_ALL)
 
-            # Prompt for server link
+            # Nhập Game ID hoặc private server link
             server_link = input(Fore.CYAN + "Please Enter Game ID Or Private Server Link: " + Style.RESET_ALL)
-            formatted_link = format_server_link(server_link)
+            formatted_link = format_server_link(server_link)  # Định dạng lại server link
 
             if formatted_link:
-                server_links = [(package_name, formatted_link) for package_name in packages]
+                server_links = [(package_name, formatted_link) for package_name in packages]  # Lưu server link
                 save_server_links(server_links)
                 print(Fore.GREEN + "Game ID or private server link saved successfully!" + Style.RESET_ALL)
-            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
+            else:
+                print(Fore.RED + "Invalid server link format!" + Style.RESET_ALL)
 
-        elif setup_type == "6":  # Auto Login via Cookie
+            input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)  # Đợi người dùng nhấn Enter để thoát
+
+        elif setup_type == "7":  # Auto Login via Cookie
             inject_cookies_and_appstorage()
             input(Fore.GREEN + "\nPress Enter to exit..." + Style.RESET_ALL)
 
-        elif setup_type == "7":
+        elif setup_type == "8":
             packages = get_roblox_packages()
 
             if not packages:
@@ -1250,16 +1266,18 @@ def main():
                     print(Fore.RED + f"Hwid Not Found On Your Device!" + Style.RESET_ALL)
             input(Fore.CYAN + "Please Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
 
-        elif setup_type == "8":
+        elif setup_type == "9":
             setup_webhook()
 
-        elif setup_type == "9":
-            logout_all_packages()
-
         elif setup_type == "10":
-            delete_folders_from_all_packages()
+            logout_all_packages()
+            input(Fore.CYAN + "Please Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
 
         elif setup_type == "11":
+            delete_folders_from_all_packages()
+            input(Fore.CYAN + "Please Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
+
+        elif setup_type == "12":
             accounts = load_accounts()
             server_links = load_server_links()
 
@@ -1271,7 +1289,7 @@ def main():
                 print(Fore.RED + "No accounts or server links to display." + Style.RESET_ALL)
             input(Fore.GREEN + "\nPress Enter to return to the menu..." + Style.RESET_ALL)
 
-        elif setup_type == "12":
+        elif setup_type == "13":
             global stop_webhook_thread
             stop_webhook_thread = True  
             break 
