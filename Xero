@@ -1,8 +1,5 @@
-import os
-import requests
 import json
 import time
-import subprocess
 import asyncio
 import aiohttp
 import threading
@@ -14,7 +11,6 @@ import hashlib
 import sqlite3
 import shutil
 import signal
-from colorama import init, Fore, Style
 from threading import Lock
 from urllib.parse import urlparse
 
@@ -731,7 +727,7 @@ def get_hwid(package_name):
     hwid_file_path = get_hwid_file_path(package_name)
     
     if hwid_file_path is None:
-        return None, None  # Trả về cả hai giá trị là None nếu không tìm thấy file
+        return None, None  
 
     try:
         with open(hwid_file_path, "r") as file:
@@ -742,29 +738,6 @@ def get_hwid(package_name):
     except Exception as e:
         print(Fore.RED + f"An Error Occurred While Retrieving Your Hwid!" + Style.RESET_ALL)
         return None, None  
-
-def run_process(package_name, minutes):
-    hwid, hwid_file_path = get_hwid(package_name) 
-    
-    if hwid is None or hwid_file_path is None:  
-        print(Fore.RED + "An Error Occurred While Getting Hwid To Bypass Fluxus, Please Check And Try Again Later" + Style.RESET_ALL)
-        return  
-    
-    axionix = f"https://flux.li/android/external/start.php?HWID={hwid}"
-    url = f"https://madkung.vercel.app/fluxus-api?url={axionix}&api_key=XqzyaenZishd33axPYPz"
-    print(Fore.YELLOW + f"The Fluxus Link You Want To Bypass Is: {axionix}" + Style.RESET_ALL)
-    
-    try:
-        response = requests.get(url)
-        
-        if response.status_code == 200:
-            print(Fore.GREEN + "Bypass Fluxus Sent To API Successfully" + Style.RESET_ALL)
-            print("Response:", response.json())
-        else:
-            print(Fore.RED + f"An Error Occurred When Using The API To Bypass Fluxus, Please Report It To Axionix On Discord: https://discord.gg/axionix" + Style.RESET_ALL)
-    
-    except Exception as e:
-        print(Fore.RED + f"An Error Occurred When Using The API To Bypass Fluxus, Please Report It To Axionix On Discord: https://discord.gg/axionix" + Style.RESET_ALL)
 
 def edit_hwid_file(hwid_file_path):
     try:
@@ -803,8 +776,7 @@ def main():
             "List",
             "Automatically Set Up User ID For Roblox Games",
             "Roblox Account Login Using Cookies",       
-            "Automatically Same Hwid For Fluxus",
-            "Automatically Bypass Fluxus Executor Keys",     
+            "Automatically Same Hwid For Fluxus",   
             "Automatically Send Webhook",      
             "Exit"
         ]
@@ -1075,20 +1047,9 @@ def main():
             input(Fore.CYAN + "Please Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
 
         elif setup_type == "10":
-            packages = get_roblox_packages()
-            if not packages:
-                print(Fore.RED + "Package Not Found On Your Device!" + Style.RESET_ALL)
-            else:
-                print(Fore.GREEN + "Package Found on Your Device: " + ", ".join(packages) + Style.RESET_ALL)
-                package_name = packages[0] 
-                minutes = int(input(Fore.CYAN + "Please Enter Required Time To Kill/Rejoin For Roblox Game: " + Style.RESET_ALL)) * 60
-                run_process(package_name, minutes)
-            input(Fore.CYAN + "Please Click Enter To Return To The Main Menu Of The Tool..." + Style.RESET_ALL) 
-
-        elif setup_type == "11":
             setup_webhook()
 
-        elif setup_type == "12":
+        elif setup_type == "11":
             global stop_webhook_thread
             stop_webhook_thread = True  
             break 
