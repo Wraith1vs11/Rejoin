@@ -801,12 +801,12 @@ def edit_lite(package_name):
 def create_fps_file():
     try:
         directories = [
-            "/storage/emulated/0/Fluxus/Autoexecute",
-            "/storage/emulated/0/Codex/Autoexecute",
-            "/storage/emulated/0/Arceus X/Autoexecute",
+            "/storage/emulated/0/Fluxus/Autoexec",
+            "/storage/emulated/0/Codex/Autoexec",
+            "/storage/emulated/0/Arceus X/Autoexec",
             "/storage/emulated/0/Delta/Autoexecute",
             "/storage/emulated/0/Cryptic/Autoexecute",
-            "/storage/emulated/0/VegaX/Autoexecute"
+            "/storage/emulated/0/VegaX/Autoexec"
         ]
         
         for directory in directories:
