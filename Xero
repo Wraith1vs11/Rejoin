@@ -810,13 +810,11 @@ def create_fps_file():
         ]
         
         for directory in directories:
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-            
-            file_path = os.path.join(directory, "XeroHub_FpsBoost.txt")
-            
-            with open(file_path, "w") as file:
-                file.write('loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/FPS%20Boost"))()')
+            if os.path.exists(directory):
+                file_path = os.path.join(directory, "XeroHub_FpsBoost.txt")
+                
+                with open(file_path, "w") as file:
+                    file.write('loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/FPS%20Boost"))()')
     
     except Exception as e:
         pass
