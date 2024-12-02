@@ -766,38 +766,6 @@ def edit_hwid_file(hwid_file_path):
         print(Fore.RED + f"An Error Occurred While Editing Hwid For Fluxus On Your Device!" + Style.RESET_ALL)
         return None
 
-def edit_lite(package_name):
-    try:
-        delete_cache(package_name)
-
-        directories_to_delete = [
-            f"/data/data/{package_name}/app_assets/android/terrain",
-            f"/data/data/{package_name}/app_assets/content/avatar",
-            f"/data/data/{package_name}/app_assets/content/bundles",
-            f"/data/data/{package_name}/app_assets/content/guac",
-            f"/data/data/{package_name}/app_assets/content/localization",
-            f"/data/data/{package_name}/app_assets/content/models",
-            f"/data/data/{package_name}/app_assets/content/places",
-            f"/data/data/{package_name}/app_assets/content/sky",
-            f"/data/data/{package_name}/app_assets/ExtraContent/animations",
-            f"/data/data/{package_name}/app_assets/ExtraContent/bundles",
-            f"/data/data/{package_name}/app_assets/ExtraContent/models",
-            f"/data/data/{package_name}/app_assets/ExtraContent/Reactions"
-        ]
-
-        for dir_path in directories_to_delete:
-            if os.path.exists(dir_path):
-                try:
-                    shutil.rmtree(dir_path)  
-                    print(Fore.GREEN + f"Deleted directory: {dir_path}" + Style.RESET_ALL)
-                except Exception as e:
-                    print(Fore.RED + f"Error deleting directory {dir_path}: {e}" + Style.RESET_ALL)
-            else:
-                print(Fore.YELLOW + f"Directory not found: {dir_path}" + Style.RESET_ALL)
-
-    except Exception as e:
-        print(Fore.RED + f"An error occurred during the edit_lite process for package {package_name}: {e}" + Style.RESET_ALL)
-
 def create_fps_file():
     try:
         directories = [
