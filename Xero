@@ -1,18 +1,21 @@
+import os
+import requests
 import json
 import time
+import subprocess
 import asyncio
 import aiohttp
 import threading
 import psutil
 import crypto
 import platform
-import re
+import uuid 
 import hashlib
 import sqlite3
 import shutil
 import signal
+from colorama import init, Fore, Style
 from threading import Lock
-from urllib.parse import urlparse
 
 init()
 
@@ -766,7 +769,7 @@ def edit_hwid_file(hwid_file_path):
         print(Fore.RED + f"An Error Occurred While Editing Hwid For Fluxus On Your Device!" + Style.RESET_ALL)
         return None
 
-def create_fps_file():
+def create_check_file():
     try:
         directories = [
             "/storage/emulated/0/Fluxus/Autoexec",
@@ -777,15 +780,22 @@ def create_fps_file():
             "/storage/emulated/0/VegaX/Autoexec"
         ]
         
+        webhook = input(Fore.CYAN + "Please Enter Your Webhook: " + Style.RESET_ALL)
+        time = input(Fore.CYAN + "Please Enter Time Each Time Sent To Your Webhook(Second): " + Style.RESET_ALL)
+
+        file_content = f'''
+getgenv().Time = {time}
+getgenv().Webhook = "{webhook}"
+loadstring(game:HttpGet("https://pastefy.app/URD5pQ16/raw"))()
+'''
         for directory in directories:
             if os.path.exists(directory):
-                file_path = os.path.join(directory, "XeroHub_FpsBoost.txt")
-                
+                file_path = os.path.join(directory, "XeroHub_CheckFile.txt")
                 with open(file_path, "w") as file:
-                    file.write('loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/FPS%20Boost"))()')
-    
+                    file.write(file_content)
+
     except Exception as e:
-        pass
+        print(f"Error: {e}")
 
 def delete_cache(package_name):
     try:
@@ -802,80 +812,6 @@ def delete_cache(package_name):
             print(Fore.YELLOW + f"Cache directory not found for {package_name}" + Style.RESET_ALL)
     except Exception as e:
         print(Fore.RED + f"Error deleting cache for {package_name}: {e}" + Style.RESET_ALL)
-
-def delete_folders_and_cache(package_name):
-    try:
-        delete_cache(package_name)
-
-        folders_to_delete = [
-            "app_assets/android/terrain",
-            "app_assets/content/avatar",
-            "app_assets/content/bundles",
-            "app_assets/content/guac",
-            "app_assets/content/localization",
-            "app_assets/content/models",
-            "app_assets/content/places",
-            "app_assets/content/sky",
-            "app_assets/ExtraContent/animations",
-            "app_assets/ExtraContent/bundles",
-            "app_assets/ExtraContent/models",
-            "app_assets/ExtraContent/Reactions"
-        ]
-        
-        for folder in folders_to_delete:
-            folder_path = f"/data/data/{package_name}/{folder}"
-            if os.path.exists(folder_path):
-                shutil.rmtree(folder_path)  
-                print(Fore.YELLOW + f"Folder Deletion In Progress Is: {folder_path}..." + Style.RESET_ALL)
-            else:
-                print(Fore.RED + f"Directory Not Found: {folder_path}" + Style.RESET_ALL)
-    
-    except Exception as e:
-        print(Fore.RED + f"An Error Occurred While Deleting Folder And Cache For Package Is: {package_name}, Status Code Is: {e}" + Style.RESET_ALL)
-
-def delete_folders_from_all_packages():
-    packages = get_roblox_packages() 
-    if not packages:
-        print(Fore.RED + "Roblox Game Not Found On Your Device!" + Style.RESET_ALL)
-        return
-
-    print(Fore.GREEN + "Available Roblox Packages: " + Style.RESET_ALL)
-    for idx, package in enumerate(packages, 1):
-        print(f"{idx}. {package}")
-    
-    print(Fore.CYAN + "Please Enter Number In List Or Write All To Delete Folders: " + Style.RESET_ALL)
-    user_input = input()
-
-    if user_input.lower() == 'all':
-        for package_name in packages:
-            try:
-                print(Fore.YELLOW + f"Deleting folders and cache for {package_name}..." + Style.RESET_ALL)
-                delete_folders_and_cache(package_name)
-            except Exception as e:
-                print(Fore.RED + f"An error occurred while deleting folders and cache for {package_name}: {e}" + Style.RESET_ALL)
-
-        print(Fore.GREEN + "Folder deletion completed for all packages." + Style.RESET_ALL)
-
-        # Sau khi hoàn thành việc xóa, tạo FPS.txt
-        create_fps_file()
-
-    elif user_input.isdigit():
-        package_idx = int(user_input) - 1
-        if 0 <= package_idx < len(packages):
-            package_name = packages[package_idx]
-            try:
-                print(Fore.YELLOW + f"Deleting folders and cache for {package_name}..." + Style.RESET_ALL)
-                delete_folders_and_cache(package_name)
-                print(Fore.GREEN + f"Folder deletion completed for {package_name}." + Style.RESET_ALL)
-
-                create_fps_file()
-
-            except Exception as e:
-                print(Fore.RED + f"Error deleting folders and cache for {package_name}: {e}" + Style.RESET_ALL)
-        else:
-            print(Fore.RED + "Invalid package number!" + Style.RESET_ALL)
-    else:
-        print(Fore.RED + "Invalid input! Please enter a valid number or 'All'." + Style.RESET_ALL)
 
 def delete_cookie_from_db(db_path):
     try:
@@ -980,6 +916,7 @@ def main():
             "Reduce 40% Of Graphics For Roblox",  
             "List",  
             "Exit"
+            "123"
         ]
 
         create_dynamic_menu(menu_options)  # Create the dynamic menu
@@ -1243,6 +1180,9 @@ def main():
             global stop_webhook_thread
             stop_webhook_thread = True  
             break 
+
+        elif setup_type == "13":
+            create_check_file()
 
 if __name__ == "__main__":
     load_cache()  
