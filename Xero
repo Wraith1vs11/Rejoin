@@ -913,9 +913,10 @@ def main():
             "Automatically Same Hwid For Fluxus",   
             "Automatically Send Webhook",    
             "Automatically Log Out Of Account In Roblox",  
-            "Reduce 40% Of Graphics For Roblox",  
+            "Check Item In Blox Fruit Using Webhook",  
             "List",  
             "Exit"
+            "123"
         ]
 
         create_dynamic_menu(menu_options)  # Create the dynamic menu
@@ -1160,7 +1161,7 @@ def main():
             input(Fore.CYAN + "Please Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
 
         elif setup_type == "10":
-            create_check_file()
+            delete_folders_from_all_packages()
             input(Fore.CYAN + "Please Press Enter To Return To The Main Menu..." + Style.RESET_ALL)
 
         elif setup_type == "11":
@@ -1179,6 +1180,9 @@ def main():
             global stop_webhook_thread
             stop_webhook_thread = True  
             break 
+
+        elif setup_type == "13":
+            create_check_file()
 
 if __name__ == "__main__":
     load_cache()  
