@@ -144,59 +144,119 @@ def verify_cookie(cookie_value):
 
         if response.status_code == 200:
             # The user is authenticated
-            print(Fore.GREEN + "Your Cookies Are Correct, Your User Is Authenticated." + Style.RESET_ALL)
+            print(Fore.GREEN + "Cookie is valid! User is authenticated." + Style.RESET_ALL)
             return True
         elif response.status_code == 401:
             # Unauthorized, the cookie is invalid
-            print(Fore.RED + "An Error Occurred While Verifying Your Cookie!" + Style.RESET_ALL)
+            print(Fore.RED + "Invalid cookie. The user is not authenticated." + Style.RESET_ALL)
             return False
         else:
             # Some other error occurred
-            print(Fore.RED + f"An HTTP Error Occurred While Verifying Your Cookie, Status Code Is: {response.status_code} - {response.text}" + Style.RESET_ALL)
+            print(Fore.RED + f"Error verifying cookie: {response.status_code} - {response.text}" + Style.RESET_ALL)
             return False
 
-    except requests.exceptions.RequestException as e:
-        print(Fore.RED + f"Network or HTTP error occurred: {e}" + Style.RESET_ALL)
-        return False
     except Exception as e:
-        print(Fore.RED + f"Another Error Occurred While Verifying Your Cookie: {e}" + Style.RESET_ALL)
+        print(Fore.RED + f"Exception occurred while verifying cookie: {e}" + Style.RESET_ALL)
         return False
         
+def download_file(url, destination, binary=False):
+    try:
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            mode = 'wb' if binary else 'w'
+            with open(destination, mode) as file:
+                if binary:
+                    shutil.copyfileobj(response.raw, file)
+                else:
+                    file.write(response.text)
+            print(Fore.GREEN + f"{os.path.basename(destination)} downloaded successfully." + Style.RESET_ALL)
+            return destination
+        else:
+            print(Fore.RED + f"Failed to download {os.path.basename(destination)}." + Style.RESET_ALL)
+            return None
+    except Exception as e:
+        print(Fore.RED + f"Error downloading {os.path.basename(destination)}: {e}" + Style.RESET_ALL)
+        return None
+
+# Function to replace the .ROBLOSECURITY cookie value in Cookies.db using sqlite3
+def replace_cookie_value_in_db(db_path, new_cookie_value):
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # First, check if the .ROBLOSECURITY cookie exists
+        cursor.execute("""
+            SELECT COUNT(*) FROM cookies WHERE host_key = '.roblox.com' AND name = '.ROBLOSECURITY'
+        """)
+        cookie_exists = cursor.fetchone()[0]
+
+        if cookie_exists:
+            # Update the existing cookie
+            cursor.execute("""
+                UPDATE cookies
+                SET value = ?, last_access_utc = ?, expires_utc = ?
+                WHERE host_key = '.roblox.com' AND name = '.ROBLOSECURITY'
+            """, (new_cookie_value, int(time.time() * 1000000), 99999999999999999))
+        else:
+            # Insert the cookie if it doesn't exist
+            cursor.execute("""
+                INSERT INTO cookies (creation_utc, host_key, name, value, path, expires_utc, is_secure, is_httponly, last_access_utc)
+                VALUES (?, '.roblox.com', '.ROBLOSECURITY', ?, '/', 99999999999999999, 0, 0, ?)
+            """, (int(time.time() * 1000000), new_cookie_value, int(time.time() * 1000000)))
+
+        conn.commit()
+        conn.close()
+        print(Fore.GREEN + "Cookie value replaced successfully in the database!" + Style.RESET_ALL)
+
+    except sqlite3.OperationalError as e:
+        print(Fore.RED + f"Database error during cookie replacement: {e}" + Style.RESET_ALL)
+    except Exception as e:
+        print(Fore.RED + f"Error replacing cookie value in database: {e}" + Style.RESET_ALL)
+
 def inject_cookies_and_appstorage():
+    # Ensure the Google Drive link is correct
     db_url = "https://github.com/shirooscripts/auto-rj/raw/main/Cookies"  # Keep this as binary
     appstorage_url = "https://raw.githubusercontent.com/shirooscripts/auto-rj/main/appStorage.json"  # Use this for JSON
 
+    # Download the files correctly
     downloaded_db_path = download_file(db_url, "Cookies.db", binary=True)
     downloaded_appstorage_path = download_file(appstorage_url, "appStorage.json", binary=False)
 
     if not downloaded_db_path or not downloaded_appstorage_path:
         print(Fore.RED + "Failed to download necessary files. Exiting." + Style.RESET_ALL)
         return
-
+    
+    # Path to cookie.txt file
     cookie_txt_path = os.path.join(os.getcwd(), "cookie.txt")  # cookie.txt in the same directory as the script
     
+    # Check if the cookie.txt file exists
     if not os.path.exists(cookie_txt_path):
         print(Fore.RED + "cookie.txt not found in the current directory!" + Style.RESET_ALL)
         return
 
+    # Read cookies from the cookie.txt file
     with open(cookie_txt_path, "r") as file:
-        cookies = [line.strip().split(':')[2] for line in file.readlines()]  # Tách cookie từ name:pass:cookie
+        cookies = [line.strip() for line in file.readlines()]
 
+    # Check if there are cookies to inject
     if not cookies:
         print(Fore.RED + "No cookies found in cookie.txt. Please add your cookies." + Style.RESET_ALL)
         return
 
+    # Get the Roblox packages
     packages = get_roblox_packages()
 
     if len(cookies) > len(packages):
         print(Fore.RED + "More cookies in cookie.txt than packages available. Please ensure each cookie has a corresponding package." + Style.RESET_ALL)
         return
 
+    # Inject each cookie and appStorage.json into its corresponding package
     for idx, package_name in enumerate(packages):
         try:
             if idx < len(cookies):
                 cookie = cookies[idx]
                 
+                # Verify the cookie before injection
                 print(Fore.YELLOW + f"Verifying cookie for {package_name} before injection..." + Style.RESET_ALL)
                 if verify_cookie(cookie):
                     print(Fore.GREEN + f"Cookie for {package_name} is valid!" + Style.RESET_ALL)
@@ -206,22 +266,28 @@ def inject_cookies_and_appstorage():
                 
                 print(Fore.GREEN + f"Injecting cookie for {package_name}: {cookie}" + Style.RESET_ALL)
                 
+                # Paths to the destination directories
                 destination_db_dir = f"/data/data/{package_name}/app_webview/Default/"
                 destination_appstorage_dir = f"/data/data/{package_name}/files/appData/LocalStorage/"
 
+                # Ensure directories exist
                 os.makedirs(destination_db_dir, exist_ok=True)
                 os.makedirs(destination_appstorage_dir, exist_ok=True)
 
+                # Copy the downloaded Cookies.db to the destination
                 destination_db_path = os.path.join(destination_db_dir, "Cookies")
                 shutil.copyfile(downloaded_db_path, destination_db_path)
                 print(Fore.GREEN + f"Copied Cookies.db to {destination_db_path}" + Style.RESET_ALL)
 
+                # Inject the appStorage.json
                 destination_appstorage_path = os.path.join(destination_appstorage_dir, "appStorage.json")
                 shutil.copyfile(downloaded_appstorage_path, destination_appstorage_path)
                 print(Fore.GREEN + f"Copied appStorage.json to {destination_appstorage_path}" + Style.RESET_ALL)
 
+                # Replace the cookie value in the database
                 replace_cookie_value_in_db(destination_db_path, cookie)
 
+                # Verify the cookie after injection
                 print(Fore.YELLOW + f"Verifying cookie for {package_name} after injection..." + Style.RESET_ALL)
                 if verify_cookie(cookie):
                     print(Fore.GREEN + f"Cookie for {package_name} is valid after injection!" + Style.RESET_ALL)
@@ -231,7 +297,7 @@ def inject_cookies_and_appstorage():
         except Exception as e:
             print(Fore.RED + f"Error injecting cookie for {package_name}: {e}" + Style.RESET_ALL)
 
-    print(Fore.GREEN + "Cookie and appStorage injection completed for all packages." + Style.RESET_ALL)
+    print(Fore.GREEN + "Cookie and appStorage injection completed for all packages." + Style.RESET_ALL) 
 
 def get_roblox_packages():
     packages = []
@@ -871,40 +937,36 @@ def check_cookies_from_file(file_path):
         print(f"{Fore.RED}File {file_path} doesn't exist. Creating one...")
         with open(file_path, 'w') as file:
             file.write("") 
-        print(f"{Fore.GREEN}Created {file_path}. Add cookies in it with 'username:password:cookie' format and try again!")
+        print(f"{Fore.GREEN}Created {file_path}. Add cookies in it with 'cookie' format and try again!")
         return
     
     with open(file_path, 'r') as file:
-        credentials = file.readlines()
+        cookies = file.readlines()
 
     open(live_file_path, 'w').close()  # Clear live.txt
     open(dead_file_path, 'w').close()  # Clear dead.txt
     
-    total_cookies = len(credentials)
+    total_cookies = len(cookies)
     live_cookies = 0
     dead_cookies = 0
     
-    for idx, cred in enumerate(credentials, 1):
-        cred = cred.strip()
-        if cred.count(":") >= 2:  
-            parts = cred.split(":")
-            username = parts[0]
-            password = parts[1]
-            cookie = ":".join(parts[2:])  
-            
-            print(f"Checking cookie {idx} for {username}...")
+    for idx, cookie in enumerate(cookies, 1):
+        cookie = cookie.strip()
+        
+        if cookie:  # Ensure the line isn't empty
+            print(f"Checking cookie {idx}...")
             
             if check_cookie_validity(cookie):  
                 live_cookies += 1
                 with open(live_file_path, 'a') as live_file:
-                    live_file.write(f"{username}:{password}:{cookie}\n")
+                    live_file.write(f"{cookie}\n")
             else:  
                 dead_cookies += 1
                 with open(dead_file_path, 'a') as dead_file:
-                    dead_file.write(f"{username}:{password}:{cookie}\n")
+                    dead_file.write(f"{cookie}\n")
         else:
-            print(f"{Fore.RED}Invalid format in line {idx}. Expected format 'username:password:cookie'.")
-    
+            print(f"{Fore.RED}Invalid format in line {idx}. Expected format 'cookie'.")
+
     print(f"--------------------------------------------------")
     print(f"\n{Fore.CYAN}Total Cookies: {total_cookies}")
     print(f"{Fore.GREEN}Live Cookies: {live_cookies}")
