@@ -5,6 +5,7 @@ import asyncio
 import aiohttp
 import threading
 import psutil
+import re
 import crypto
 import platform
 import distutils
