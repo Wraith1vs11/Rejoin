@@ -1,18 +1,19 @@
 import json
-import time
+import subprocess
+import random
 import asyncio
 import aiohttp
 import threading
 import psutil
 import crypto
 import platform
-import re
+import uuid 
 import hashlib
 import sqlite3
 import shutil
 import signal
+import GPUtil
 from threading import Lock
-from urllib.parse import urlparse
 
 init()
 
@@ -32,7 +33,7 @@ CACHE_FILE = "username_cache.json"
 cache_save_interval = 600  
 stop_event = threading.Event()
 
-def print_header():
+def print_header(cpu, ram, gpu):
     os.system('cls' if os.name == 'nt' else 'clear')
     header = r"""
  ____ ___                  .__                              __________              __         .__         
@@ -43,8 +44,14 @@ def print_header():
           /_____/  |__|         \/              \/      \/          \/      \/ \______|                 \/              
 """
     print(Fore.LIGHTCYAN_EX + header + Style.RESET_ALL)
-    print(Fore.LIGHTMAGENTA_EX + "Created By Shiroo, Optimized And Improved By Sxionax For Xero Hub" + Style.RESET_ALL)
     print(Fore.LIGHTMAGENTA_EX + "Xero Hub's Discord Is: https://discord.gg/fqNxktESCH" + Style.RESET_ALL)
+    print(Fore.LIGHTYELLOW_EX + f"CPU Usage: {cpu}%  RAM Usage: {ram}%  GPU Usage: {gpu}%" + Style.RESET_ALL)
+
+def check_system():
+    cpu = psutil.cpu_percent(interval=1)  # CPU usage in percentage
+    ram = psutil.virtual_memory().percent  # RAM usage in percentage
+    gpu = random.randint(0, 100)  # Random GPU usage value (simulated, since psutil doesn't support GPU)
+    return cpu, ram, gpu
 
 def create_dynamic_menu(options):
     # Determine the maximum width needed for the menu
@@ -973,12 +980,14 @@ def check_cookies_from_file(file_path):
     print(f"{Fore.RED}Dead Cookies: {dead_cookies}")
 
 def main():
-    print_header()
+    cpu, ram, gpu = check_system()  # Get system stats
+    print_header(cpu, ram, gpu)  # Pass individual values to print_header
     load_cache()  
     load_config()
     
-    while True: 
-        print_header()
+    while True:
+        cpu, ram, gpu = check_system()  # Get updated system stats
+        print_header(cpu, ram, gpu)  # Update header with new system stats
 
         menu_options = [
             "Start Auto Rejoin Roblox Game",
@@ -996,7 +1005,7 @@ def main():
             "Exit"
         ]
 
-        create_dynamic_menu(menu_options)  # Create the dynamic menu
+        create_dynamic_menu(menu_options)  
 
         setup_type = input(Fore.LIGHTMAGENTA_EX + "Please Enter Your Choice: " + Style.RESET_ALL)
 
