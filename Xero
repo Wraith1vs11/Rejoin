@@ -49,7 +49,7 @@ def print_header(cpu, ram, gpu):
     print(Fore.LIGHTMAGENTA_EX + "Xero Hub's Discord Is: https://discord.gg/fqNxktESCH" + Style.RESET_ALL)
     print(Fore.LIGHTYELLOW_EX + f"CPU Usage: {cpu}%  RAM Usage: {ram}%  GPU Usage: {gpu}%" + Style.RESET_ALL)
 
-def check_system():
+def check_system_cpu_ram_gpu():
     cpu = psutil.cpu_percent(interval=1)  # CPU usage in percentage
     ram = psutil.virtual_memory().percent  # RAM usage in percentage
     gpu = random.randint(0, 100)  # Random GPU usage value (simulated, since psutil doesn't support GPU)
@@ -99,7 +99,8 @@ def handle_exit_signal(signum, frame):
     exit(0)
 
 def update_status_table(package_statuses):
-    print_header()
+    cpu, ram, gpu = check_system_cpu_ram_gpu()  
+    print_header(cpu, ram, gpu)  
 
     headers = ["Package", "Username", "Status"]
     status_width = 30  
@@ -982,13 +983,13 @@ def check_cookies_from_file(file_path):
     print(f"{Fore.RED}Dead Cookies: {dead_cookies}")
 
 def main():
-    cpu, ram, gpu = check_system()  # Get system stats
+    cpu, ram, gpu = check_system_cpu_ram_gpu()  # Get system stats
     print_header(cpu, ram, gpu)  # Pass individual values to print_header
     load_cache()  
     load_config()
     
     while True:
-        cpu, ram, gpu = check_system()  # Get updated system stats
+        cpu, ram, gpu = check_system_cpu_ram_gpu()  # Get updated system stats
         print_header(cpu, ram, gpu)  # Update header with new system stats
 
         menu_options = [
