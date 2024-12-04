@@ -555,45 +555,53 @@ def format_server_link(input_link):
     print(Fore.RED + "Invalid Input! Please Check And Write Correct Game ID Or Private Server Link!" + Style.RESET_ALL)
     return None
 
-def save_data_to_file(filename, data):
-    with open(filename, "w") as file:
-        for item in data:
-            file.write(f"{item[0]},{item[1]}\n")
-
-def load_data_from_file(filename):
-    data = []
-    if os.path.exists(filename):  
-        with open(filename, "r") as file:
-            for line in file:
-                item = line.strip().split(",", 1)
-                if len(item) == 2:  # Ensure correct data format
-                    data.append((item[0], item[1]))
-    return data
-
 def save_server_links(server_links):
-    save_data_to_file(SERVER_LINKS_FILE, server_links)
+    with open(SERVER_LINKS_FILE, "w") as file:
+        for package, link in server_links:
+            file.write(f"{package},{link}\n")
 
 def load_server_links():
-    return load_data_from_file(SERVER_LINKS_FILE)
+    server_links = []
+    if os.path.exists(SERVER_LINKS_FILE):
+        with open(SERVER_LINKS_FILE, "r") as file:
+            for line in file:
+                package, link = line.strip().split(",", 1)
+                server_links.append((package, link))
+    return server_links
 
 def save_accounts(accounts):
-    save_data_to_file(ACCOUNTS_FILE, accounts)
+    with open(ACCOUNTS_FILE, "w") as file:
+        for package, user_id in accounts:
+            file.write(f"{package},{user_id}\n")
 
 def load_accounts():
-    return load_data_from_file(ACCOUNTS_FILE)
+    accounts = []
+    if os.path.exists(ACCOUNTS_FILE):
+        with open(ACCOUNTS_FILE, "r") as file:
+            for line in file:
+                package, user_id = line.strip().split(",", 1)
+                accounts.append((package, user_id))
+    return accounts
 
 def find_userid_from_file(file_path):
     try:
         with open(file_path, 'r') as file:
             content = file.read()
+            # Debugging information removed to keep console clean
 
-            match = re.search(r'"UserId":"(.*?)"', content)
-
-            if match:
-                return match.group(1) 
-            else:
+            userid_start = content.find('"UserId":"')
+            if userid_start == -1:
                 print("Userid not found")
                 return None
+
+            userid_start += len('"UserId":"')
+            userid_end = content.find('"', userid_start)
+            if userid_end == -1:
+                print("Userid end quote not found")
+                return None
+
+            userid = content[userid_start:userid_end]
+            return userid
 
     except IOError as e:
         print(f"Error reading file: {e}")
