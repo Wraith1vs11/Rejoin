@@ -1292,8 +1292,6 @@ def block_accounts():
     print(f'{FAILURE_COLOR}Total failed blocks: {failed_blocks}{RESET_COLOR}')
     print(f'Time: {elapsed_time.total_seconds():.2f} seconds. Total cookies: {len(cookies)}')
 
-detect_and_write_lua_script()
-
 def main():
     load_config() 
     load_cache()  
@@ -1325,6 +1323,7 @@ def main():
         setup_type = input(Fore.LIGHTMAGENTA_EX + "Enter choice: " + Style.RESET_ALL)
         
         if setup_type == "1":
+            detect_and_write_lua_script()
             server_links = load_server_links()
             accounts = load_accounts()
 
@@ -1625,7 +1624,7 @@ def main():
             inject_cookies_and_appstorage()
 
             while True:
-                user_input = input(Fore.CYAN + "Do You Want To Block Joining The Game On The Same Server? (y/n): " + Style.RESET_ALL).strip().lower()
+                user_input = input(Fore.CYAN + "Do You Want To Block Joining The Game On The Same Server? (Yes/No): " + Style.RESET_ALL).strip().lower()
                
                 if user_input == "y":
                     block_accounts()
