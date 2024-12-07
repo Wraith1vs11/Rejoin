@@ -1625,7 +1625,7 @@ def main():
             inject_cookies_and_appstorage()
 
             while True:
-                user_input = input(Fore.CYAN + "Do You Want To Block Joining The Game On The Same Server? (Yes/No): " + Style.RESET_ALL).strip().lower()
+                user_input = input(Fore.CYAN + "Do You Want To Block Joining The Game On The Same Server? (y/n): " + Style.RESET_ALL).strip().lower()
                
                 if user_input == "y":
                     block_accounts()
