@@ -1293,14 +1293,14 @@ def block_accounts():
     print(f'Time: {elapsed_time.total_seconds():.2f} seconds. Total cookies: {len(cookies)}')
 
 def main():
-    load_config() 
-    load_cache()  
-    
-    cpu, ram, gpu = check_system_cpu_ram_gpu() 
-    print_header(cpu, ram, gpu)  
+    load_config()
+    load_cache()
+
+    cpu, ram, gpu = check_system_cpu_ram_gpu()
+    print_header(cpu, ram, gpu)
     while True:
-        cpu, ram, gpu = check_system_cpu_ram_gpu() 
-        print_header(cpu, ram, gpu)   
+        cpu, ram, gpu = check_system_cpu_ram_gpu()
+        print_header(cpu, ram, gpu)
 
         menu_options = [
             "Start Auto Rejoin Roblox Game",
@@ -1310,203 +1310,323 @@ def main():
             "Automatically Set Up User ID For Roblox Games",
             "Automatically Same Hwid For Fluxus",
             "Automatically Send Webhook",
-            "Automatically Login Account Using Cookies",   
-            "Automatically Log Out Of Account In Roblox",  
-            "Check Item In Blox Fruit Using Webhook",  
-            "Check Cookie",  
-            "List",         
+            "Automatically Login Account Using Cookies",
+            "Automatically Log Out Of Account In Roblox",
+            "Check Item In Blox Fruit Using Webhook",
+            "Check Cookie",
+            "List",
             "Exit"
         ]
 
-        create_dynamic_menu(menu_options)  
+        create_dynamic_menu(menu_options)
 
         setup_type = input(Fore.LIGHTMAGENTA_EX + "Enter choice: " + Style.RESET_ALL)
-        
+
         if setup_type == "1":
-            detect_and_write_lua_script()
-            server_links = load_server_links()
-            accounts = load_accounts()
-
-            if not accounts:
-                print(Fore.RED + "No user IDs set up yet! Please set them up before proceeding." + Style.RESET_ALL)
-                continue
-            elif not server_links:
-                print(Fore.RED + "No game ID or private server link set up yet! Please set them up before proceeding." + Style.RESET_ALL)
-                continue
-
-            try:
-                force_rejoin_interval = int(input("Enter the force rejoin/kill Roblox interval in minutes: ")) * 60
-                if force_rejoin_interval <= 0:
-                    raise ValueError("The interval must be a positive integer.")
-            except ValueError as ve:
-                print(Fore.RED + f"Invalid input: {ve}. Please enter a valid interval in minutes." + Style.RESET_ALL)
-                input(Fore.GREEN + "Press Enter to return to the menu..." + Style.RESET_ALL)
-                continue
-
-            if webhook_url and device_name and interval:
-                if webhook_thread is None or not webhook_thread.is_alive():
-                    start_webhook_thread()
-
-            package_statuses = {}
-            for package_name, server_link in server_links:
-                package_statuses[package_name] = {
-                    "Status": Fore.LIGHTCYAN_EX + "Initializing" + Style.RESET_ALL,
-                    "Username": get_username(accounts[server_links.index((package_name, server_link))][1]),
-                }
-
-            update_status_table(package_statuses)
-
-            # Kill Roblox processes and wait for 5 seconds
-            kill_roblox_processes()
-            time.sleep(5)
-
-            num_packages = len(server_links)
-
-            for package_name, server_link in server_links:
-                try:
-                    package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + "Launching" + Style.RESET_ALL
-                    update_status_table(package_statuses)
-                    launch_roblox(package_name, server_link, num_packages, package_statuses)
-                    package_statuses[package_name]["Status"] = Fore.GREEN + "Joined" + Style.RESET_ALL
-
-                    # Get the username for the executor check
-                    username = get_username(accounts[server_links.index((package_name, server_link))][1])
-
-                    # Reset the executor file before checking
-                    reset_executor_file(username)
-
-                    # Ensure the tool waits for the executor to load before proceeding to the next package
-                    while True:
-                        if check_executor_status(username, continuous=False):
-                            package_statuses[package_name]["Status"] = Fore.GREEN + f"Executor loaded successfully for {username}" + Style.RESET_ALL
-                            update_status_table(package_statuses)
-                            break  # Break the loop and proceed to the next package
-
-                        # If the executor failed to load within 2 minutes, rejoin and retry
-                        else:
-                            print(f"Executor did not load for {package_name} (username: {username}). Rejoining...")
-                            package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
-                            update_status_table(package_statuses)
-                            kill_roblox_process(package_name)
-                            time.sleep(2)
-                            launch_roblox(package_name, server_link, num_packages, package_statuses)
-
-                except Exception as e:
-                    # Handle subprocess or launch error
-                    print(Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL)
-                    package_statuses[package_name]["Status"] = Fore.RED + "Launch failed" + Style.RESET_ALL
-                update_status_table(package_statuses)
-
-            start_time = time.time()
-
             while True:
-                current_time = time.time()
+                disable_check_executor = input(Fore.CYAN + "Do You Want to Disable Executor UI Checking? (y/n): " + Style.RESET_ALL).strip().lower()
 
-                try:
-                    for package_name, user_id in accounts:
+                if disable_check_executor == "y":
+                    server_links = load_server_links()
+                    accounts = load_accounts()
+
+                    if not accounts:
+                        print(Fore.RED + "No user IDs set up yet! Please set them up before proceeding." + Style.RESET_ALL)
+                        continue
+                    elif not server_links:
+                        print(Fore.RED + "No game ID or private server link set up yet! Please set them up before proceeding." + Style.RESET_ALL)
+                        continue
+
+                    try:
+                        force_rejoin_interval = int(input("Enter the force rejoin/kill Roblox interval in minutes: ")) * 60
+                        if force_rejoin_interval <= 0:
+                            raise ValueError("The interval must be a positive integer.")
+                    except ValueError as ve:
+                        print(Fore.RED + f"Invalid input: {ve}. Please enter a valid interval in minutes." + Style.RESET_ALL)
+                        input(Fore.GREEN + "Press Enter to return to the menu..." + Style.RESET_ALL)
+                        continue
+
+                    package_statuses = {}
+                    for package_name, server_link in server_links:
+                        package_statuses[package_name] = {
+                            "Status": Fore.LIGHTCYAN_EX + "Initializing" + Style.RESET_ALL,
+                            "Username": get_username(accounts[server_links.index((package_name, server_link))][1]),
+                        }
+
+                    update_status_table(package_statuses)
+
+                    # Kill Roblox processes and wait for 5 seconds
+                    kill_roblox_processes()
+                    time.sleep(5)
+
+                    num_packages = len(server_links)
+
+                    for package_name, server_link in server_links:
                         try:
-                            # Retrieve the correct server_link for the package_name
-                            server_link = get_server_link(package_name, server_links)
-                            if not server_link:
-                                package_statuses[package_name]["Status"] = Fore.RED + "Server link not found" + Style.RESET_ALL
+                            package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + "Launching" + Style.RESET_ALL
+                            update_status_table(package_statuses)
+                            launch_roblox(package_name, server_link, num_packages, package_statuses)
+                            package_statuses[package_name]["Status"] = Fore.GREEN + "Joined" + Style.RESET_ALL
+                        except Exception as e:
+                            print(Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL)
+                            package_statuses[package_name]["Status"] = Fore.RED + "Launch failed" + Style.RESET_ALL
+                        update_status_table(package_statuses)
+
+                    start_time = time.time()
+
+                    while True:
+                        current_time = time.time()
+
+                        try:
+                            for package_name, user_id in accounts:
+                                try:
+                                    server_link = get_server_link(package_name, server_links)
+                                    if not server_link:
+                                        package_statuses[package_name]["Status"] = Fore.RED + "Server link not found" + Style.RESET_ALL
+                                        update_status_table(package_statuses)
+                                        continue
+
+                                    username = get_username_from_id(user_id)
+                                    presence_type, last_location_current = check_user_online(user_id)
+
+                                    package_statuses[package_name]["Username"] = username
+
+                                    if presence_type == 2:
+                                        package_statuses[package_name]["Status"] = Fore.GREEN + "In-Game" + Style.RESET_ALL
+                                    else:
+                                        if not is_roblox_running(package_name):
+                                            package_statuses[package_name]["Status"] = Fore.RED + "Process Crashed, Relaunching" + Style.RESET_ALL
+                                            kill_roblox_process(package_name)
+                                            time.sleep(2)
+                                            launch_roblox(package_name, server_link, num_packages, package_statuses)
+                                        else:
+                                            if last_location_current == "Website":
+                                                package_statuses[package_name]["Status"] = Fore.RED + "On Website, Rejoining" + Style.RESET_ALL
+                                                kill_roblox_process(package_name)
+                                                time.sleep(2)
+                                                launch_roblox(package_name, server_link, num_packages, package_statuses)
+                                            else:
+                                                package_statuses[package_name]["Status"] = Fore.YELLOW + "Not In-Game, Recently Active" + Style.RESET_ALL
+
+                                    update_status_table(package_statuses)
+                                    time.sleep(25)
+
+                                except Exception as e:
+                                    print(Fore.RED + f"Error during rejoin process for {package_name}: {e}" + Style.RESET_ALL)
+                                    package_statuses[package_name]["Status"] = Fore.RED + "General error" + Style.RESET_ALL
+                                    update_status_table(package_statuses)
+
+                            if current_time - start_time >= force_rejoin_interval:
+                                print("Force killing Roblox processes due to time limit.")
+                                kill_roblox_processes()
+                                start_time = current_time
+                                print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
+                                time.sleep(5)
+                                for package_name, server_link in server_links:
+                                    try:
+                                        package_statuses[package_name]["Status"] = Fore.RED + "Rejoining" + Style.RESET_ALL
+                                        update_status_table(package_statuses)
+                                        launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                        package_statuses[package_name]["Status"] = Fore.GREEN + "Joined" + Style.RESET_ALL
+                                    except Exception as e:
+                                        print(Fore.RED + f"Error rejoining Roblox for {package_name}: {e}" + Style.RESET_ALL)
+
                                 update_status_table(package_statuses)
-                                continue
 
-                            # Get the username associated with the user ID or fallback to user ID
-                            username = get_username_from_id(user_id)
-                            presence_type, last_location_current = check_user_online(user_id)
+                            time.sleep(90)
 
-                            package_statuses[package_name]["Username"] = username
+                        except Exception as e:
+                            print(Fore.RED + f"Critical error in auto rejoin loop: {e}" + Style.RESET_ALL)
+                            time.sleep(60)
+                            continue
+                elif disable_check_executor == "n":
+                    detect_and_write_lua_script()
+                    server_links = load_server_links()
+                    accounts = load_accounts()
 
-                            if presence_type == 2:
-                                package_statuses[package_name]["Status"] = Fore.GREEN + "In-Game" + Style.RESET_ALL
-                                
-                                if not check_executor_status(username, continuous=False):  # If executor isn't detected as working
-                                    print(f"Executor did not update for {package_name} (username: {username}). Rejoining...")
+                    if not accounts:
+                        print(Fore.RED + "No user IDs set up yet! Please set them up before proceeding." + Style.RESET_ALL)
+                        continue
+                    elif not server_links:
+                        print(Fore.RED + "No game ID or private server link set up yet! Please set them up before proceeding." + Style.RESET_ALL)
+                        continue
+
+                    try:
+                        force_rejoin_interval = int(input("Enter the force rejoin/kill Roblox interval in minutes: ")) * 60
+                        if force_rejoin_interval <= 0:
+                            raise ValueError("The interval must be a positive integer.")
+                    except ValueError as ve:
+                        print(Fore.RED + f"Invalid input: {ve}. Please enter a valid interval in minutes." + Style.RESET_ALL)
+                        input(Fore.GREEN + "Press Enter to return to the menu..." + Style.RESET_ALL)
+                        continue
+
+                    if webhook_url and device_name and interval:
+                        if webhook_thread is None or not webhook_thread.is_alive():
+                            start_webhook_thread()
+
+                    package_statuses = {}
+                    for package_name, server_link in server_links:
+                        package_statuses[package_name] = {
+                            "Status": Fore.LIGHTCYAN_EX + "Initializing" + Style.RESET_ALL,
+                            "Username": get_username(accounts[server_links.index((package_name, server_link))][1]),
+                        }
+
+                    update_status_table(package_statuses)
+
+                    # Kill Roblox processes and wait for 5 seconds
+                    kill_roblox_processes()
+                    time.sleep(5)
+
+                    num_packages = len(server_links)
+
+                    for package_name, server_link in server_links:
+                        try:
+                            package_statuses[package_name]["Status"] = Fore.LIGHTCYAN_EX + "Launching" + Style.RESET_ALL
+                            update_status_table(package_statuses)
+                            launch_roblox(package_name, server_link, num_packages, package_statuses)
+                            package_statuses[package_name]["Status"] = Fore.GREEN + "Joined" + Style.RESET_ALL
+
+                            # Get the username for the executor check
+                            username = get_username(accounts[server_links.index((package_name, server_link))][1])
+
+                            # Reset the executor file before checking
+                            reset_executor_file(username)
+
+                            # Ensure the tool waits for the executor to load before proceeding to the next package
+                            while True:
+                                if check_executor_status(username, continuous=False):
+                                    package_statuses[package_name]["Status"] = Fore.GREEN + f"Executor loaded successfully for {username}" + Style.RESET_ALL
+                                    update_status_table(package_statuses)
+                                    break  # Break the loop and proceed to the next package
+
+                                # If the executor failed to load within 2 minutes, rejoin and retry
+                                else:
+                                    print(f"Executor did not load for {package_name} (username : {username}). Rejoining...")
                                     package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
                                     update_status_table(package_statuses)
                                     kill_roblox_process(package_name)
                                     time.sleep(2)
                                     launch_roblox(package_name, server_link, num_packages, package_statuses)
-                                    
-                            else:
-                                if not is_roblox_running(package_name):
-                                    package_statuses[package_name]["Status"] = Fore.RED + "Process Crashed, Relaunching" + Style.RESET_ALL
-                                    kill_roblox_process(package_name)
-                                    time.sleep(2)
-                                    launch_roblox(package_name, server_link, num_packages, package_statuses)
-                                    
-                                    # Check executor status after relaunch
-                                    if not check_executor_status(username, continuous=False):
-                                        print(f"Executor did not load for {package_name} (username: {username}) after relaunch. Rejoining...")
-                                        package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
-                                        kill_roblox_process(package_name)
-                                        time.sleep(2)
-                                        launch_roblox(package_name, server_link, num_packages, package_statuses)
-                                    
-                                else:
-                                    if last_location_current == "Website":
-                                        package_statuses[package_name]["Status"] = Fore.RED + "On Website, Rejoining" + Style.RESET_ALL
-                                        kill_roblox_process(package_name)
-                                        time.sleep(2)
-                                        launch_roblox(package_name, server_link, num_packages, package_statuses)
 
-                                        # Check executor status after relaunch
-                                        if not check_executor_status(username, continuous=False):
-                                            print(f"Executor did not load for {package_name} (username: {username}) after relaunch. Rejoining...")
+                        except Exception as e:
+                            # Handle subprocess or launch error
+                            print(Fore.RED + f"Error launching Roblox for {package_name}: {e}" + Style.RESET_ALL)
+                            package_statuses[package_name]["Status"] = Fore.RED + "Launch failed" + Style.RESET_ALL
+                        update_status_table(package_statuses)
+
+                    start_time = time.time()
+
+                    while True:
+                        current_time = time.time()
+
+                        try:
+                            for package_name, user_id in accounts:
+                                try:
+                                    # Retrieve the correct server_link for the package_name
+                                    server_link = get_server_link(package_name, server_links)
+                                    if not server_link:
+                                        package_statuses[package_name]["Status"] = Fore.RED + "Server link not found" + Style.RESET_ALL
+                                        update_status_table(package_statuses)
+                                        continue
+
+                                    # Get the username associated with the user ID or fallback to user ID
+                                    username = get_username_from_id(user_id)
+                                    presence_type, last_location_current = check_user_online(user_id)
+
+                                    package_statuses[package_name]["Username"] = username
+
+                                    if presence_type == 2:
+                                        package_statuses[package_name]["Status"] = Fore.GREEN + "In-Game" + Style.RESET_ALL
+
+                                        if not check_executor_status(username, continuous=False):  # If executor isn't detected as working
+                                            print(f"Executor did not update for {package_name} (username: {username}). Rejoining...")
                                             package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
                                             update_status_table(package_statuses)
                                             kill_roblox_process(package_name)
                                             time.sleep(2)
                                             launch_roblox(package_name, server_link, num_packages, package_statuses)
 
-                                        # If executor loaded successfully after relaunch
-                                        else:
-                                            package_statuses[package_name]["Status"] = Fore.GREEN + "Executor loaded successfully after rejoin" + Style.RESET_ALL
-                                            update_status_table(package_statuses)
                                     else:
-                                        package_statuses[package_name]["Status"] = Fore.YELLOW + "Not In-Game, Recently Active" + Style.RESET_ALL
+                                        if not is_roblox_running(package_name):
+                                            package_statuses[package_name]["Status"] = Fore.RED + "Process Crashed, Relaunching" + Style.RESET_ALL
+                                            kill_roblox_process(package_name)
+                                            time.sleep(2)
+                                            launch_roblox(package_name, server_link, num_packages, package_statuses)
 
-                            update_status_table(package_statuses)
-                            time.sleep(25)  # Adjust the delay time as needed
+                                            # Check executor status after relaunch
+                                            if not check_executor_status(username, continuous=False):
+                                                print(f"Executor did not load for {package_name} (username: {username}) after relaunch. Rejoining...")
+                                                package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                                                kill_roblox_process(package_name)
+                                                time.sleep(2)
+                                                launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                        else:
+                                            if last_location_current == "Website":
+                                                package_statuses[package_name]["Status"] = Fore.RED + "On Website, Rejoining" + Style.RESET_ALL
+                                                kill_roblox_process(package_name)
+                                                time.sleep(2)
+                                                launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                                # Check executor status after relaunch
+                                                if not check_executor_status(username, continuous=False):
+                                                    print(f"Executor did not load for {package_name} (username: {username}) after relaunch. Rejoining...")
+                                                    package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                                                    update_status_table(package_statuses)
+                                                    kill_roblox_process(package_name)
+                                                    time.sleep(2)
+                                                    launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                                # If executor loaded successfully after relaunch
+                                                else:
+                                                    package_statuses[package_name]["Status"] = Fore.GREEN + "Executor loaded successfully after rejoin" + Style.RESET_ALL
+                                                    update_status_table(package_statuses)
+                                            else:
+                                                package_statuses[package_name]["Status"] = Fore.YELLOW + "Not In-Game, Recently Active" + Style.RESET_ALL
+
+                                    update_status_table(package_statuses)
+                                    time.sleep(25)  # Adjust the delay time as needed
+
+                                except Exception as e:
+                                    print(Fore.RED + f"Error during rejoin process for {package_name}: {e}" + Style.RESET_ALL)
+                                    package_statuses[package_name]["Status"] = Fore.RED + "General error" + Style.RESET_ALL
+                                    update_status_table(package_statuses)
+
+                            if current_time - start_time >= force_rejoin_interval:
+                                print("Force killing Roblox processes due to time limit.")
+                                kill_roblox_processes()
+                                start_time = current_time
+                                print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
+                                time.sleep(5)
+                                for package_name, server_link in server_links:
+                                    try:
+                                        package_statuses[package_name]["Status"] = Fore.RED + "Rejoining" + Style.RESET_ALL
+                                        update_status_table(package_statuses)
+                                        launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                        # Check executor status after relaunch
+                                        if not check_executor_status(username, continuous=False):
+                                            print(f"Executor did not load for {package_name} (username: {username}) after rejoin. Rejoining...")
+                                            package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
+                                            kill_roblox_process(package_name)
+                                            time.sleep(2)
+                                            launch_roblox(package_name, server_link, num_packages, package_statuses)
+
+                                        package_statuses[package_name]["Status"] = Fore.GREEN + "Joined" + Style.RESET_ALL
+                                    except Exception as e:
+                                        print(Fore.RED + f"Error rejoining Roblox for {package_name}: {e}" + Style.RESET_ALL)
+
+                                update_status_table(package_statuses)
+
+                            time.sleep(90)
 
                         except Exception as e:
-                            print(Fore.RED + f"Error during rejoin process for {package_name}: {e}" + Style.RESET_ALL)
-                            package_statuses[package_name]["Status"] = Fore.RED + "General error" + Style.RESET_ALL
-                            update_status_table(package_statuses)
-
-                    if current_time - start_time >= force_rejoin_interval:
-                        print("Force killing Roblox processes due to time limit.")
-                        kill_roblox_processes()
-                        start_time = current_time
-                        print(Fore.YELLOW + "Waiting for 5 seconds before starting the rejoin process..." + Style.RESET_ALL)
-                        time.sleep(5)
-                        for package_name, server_link in server_links:
-                            try:
-                                package_statuses[package_name]["Status"] = Fore.RED + "Rejoining" + Style.RESET_ALL
-                                update_status_table(package_statuses)
-                                launch_roblox(package_name, server_link, num_packages, package_statuses)
-                                
-                                # Check executor status after relaunch
-                                if not check_executor_status(username, continuous=False):
-                                    print(f"Executor did not load for {package_name} (username: {username}) after rejoin. Rejoining...")
-                                    package_statuses[package_name]["Status"] = Fore.RED + "Executor failed, rejoining..." + Style.RESET_ALL
-                                    kill_roblox_process(package_name)
-                                    time.sleep(2)
-                                    launch_roblox(package_name, server_link, num_packages, package_statuses)
-
-                                package_statuses[package_name]["Status"] = Fore.GREEN + "Joined" + Style.RESET_ALL
-                            except Exception as e:
-                                print(Fore.RED + f"Error rejoining Roblox for {package_name}: {e}" + Style.RESET_ALL)
-
-                        update_status_table(package_statuses)
-
-                    time.sleep(90)
-
-                except Exception as e:
-                    print(Fore.RED + f"Critical error in auto rejoin loop: {e}" + Style.RESET_ALL)
-                    time.sleep(60)
-                    continue
+                            print(Fore.RED + f"Critical error in auto rejoin loop: {e}" + Style.RESET_ALL)
+                            time.sleep(60)
+                            continue
+                else:
+                    print(Fore.RED + "Invalid input. Please enter 'yes' or 'no'." + Style.RESET_ALL)
             
         elif setup_type == "2":
             server_link = input("Enter the game ID or private server link: ")
