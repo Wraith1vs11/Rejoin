@@ -1,0 +1,120 @@
+local function block_function(func)
+    if func then
+        hookfunction(func, function(...) return end)
+    end
+end
+
+block_function(print)
+block_function(setclipboard)
+if identifyexecutor() ~= "Arceus X" and identifyexecutor() ~= "Codex" and identifyexecutor() ~= "VegaX" then
+    warn("Invalid Executor, You Can't Use This Script")
+    game.Players.LocalPlayer:Kick("Your Executor Is Wrong, Please Check Here: https://discord.gg/FcEGmkNDDe")
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/Kicked"))()
+else
+    if gethwid() ~= "85795c5b3c6b69da" then
+        game.Players.LocalPlayer:Kick("Your Hardware ID Is Wrong, Please Check Here: https://discord.gg/FcEGmkNDD")
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/Kicked"))()
+    else
+        local HttpService = game:GetService("HttpService")
+        local Players = game:GetService("Players")
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local CoreGui = game:GetService("CoreGui")
+        local request = syn and syn.request or http_request or http.request or game.HttpGet or game.HttpPost
+        local original_request = request
+
+        local old_hookfunction = hookfunction
+        getgenv().hookfunction = function(_v1, _v2)
+            if _v1 == original_request then
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/Kicked"))()
+                return
+            end
+            return old_hookfunction(_v1, _v2)
+        end
+
+        local function containsHttp(str)
+            return str:lower():find("http") ~= nil
+        end
+
+        local function checkUIElements(parent)
+            for _, element in pairs(parent:GetChildren()) do
+                if containsHttp(element.Name) then
+                    element:Destroy()
+                    warn("HTTP Detected In UI Element Name!")
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/Kicked"))()
+                    return
+                end
+
+                if (element:IsA("TextLabel") or element:IsA("TextButton") or element:IsA("TextBox")) then
+                    if containsHttp(element.Text) then
+                        element:Destroy()
+                        warn("HTTP Detected In UI Element Text!")
+                        loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/Kicked"))()
+                        return
+                    end
+                end
+            end
+        end
+
+        local function monitorCoreGui()
+            while task.wait(1) do
+                checkUIElements(CoreGui)
+            end
+        end
+
+        local function monitorNewPlayerGui()
+            Players.PlayerAdded:Connect(function(player)
+                player.ChildAdded:Connect(function(child)
+                    if child:IsA("ScreenGui") then
+                        checkUIElements(child)
+                    end
+                end)
+            end)
+        end
+
+        local function monitorScripts()
+            for _, script in pairs(game:GetDescendants()) do
+                if script:IsA("Script") or script:IsA("LocalScript") then
+                    local scriptSource = script.Source
+                    if containsHttp(scriptSource) then
+                        warn("HTTP Request Detected In Script!")
+                        loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/Kicked"))()
+                        return
+                    end
+                end
+            end
+        end
+
+        local function monitorModules()
+            for _, module in pairs(ReplicatedStorage:GetChildren()) do
+                if module:IsA("ModuleScript") then
+                    local moduleSource = module.Source
+                    if containsHttp(moduleSource) then
+                        warn("HTTP Request Detected In Module!")
+                        loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/Kicked"))()
+                        return
+                    end
+                end
+            end
+        end
+
+        task.spawn(monitorCoreGui)
+        task.spawn(monitorNewPlayerGui)
+        task.spawn(monitorScripts)
+        task.spawn(monitorModules)
+
+        local KeySystemUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/MaGiXxScripter0/keysystemv2api/master/ui/xrer_mstudio45.lua"))()
+        KeySystemUI.New({
+            ApplicationName = "Afxcaxiroblox",
+            Name = "Enter Key For Script", 
+            Info = "Please Enter Your Key:", 
+            DiscordInvite = "https://discord.gg/FcEGmkNDDe",
+            AuthType = "clientid" 
+        })
+        repeat task.wait() until KeySystemUI.Finished() or KeySystemUI.Closed
+        if KeySystemUI.Finished() and KeySystemUI.Closed == false then
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Gregory786/Sephrnan/refs/heads/main/Scripts"))()
+        else
+            warn("This Key Has Not Been Verified, Please Check Again: https://discord.gg/FcEGmkNDDe")
+        end
+    end
+end
