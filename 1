@@ -1,0 +1,67 @@
+local Khanh00000001 = syn and syn.request or http_request or (http and http.request) or (request and request.request)
+
+if not Khanh00000001 then
+    game:GetService("Players").LocalPlayer:Kick("❌ Your Executor Is Not Supported! ⛔")
+end
+
+local function Khanh00000002(Khanh00000010)
+    game:GetService("Players").LocalPlayer:Kick(Khanh00000010)
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/Kicked"))()
+end
+
+local Khanh00000003 = game:GetService("HttpService")
+local Khanh00000004 = game:GetService("Players").LocalPlayer.UserId
+local Khanh00000005 = getgenv().SKey or ""
+
+if Khanh00000005 == "" then
+    Khanh00000002("🎙️ Key Not Found, Please Enter The Key To Use The Script: https://discord.gg/FcEGmkNDDe 👩🏾‍🚀")
+end
+
+local Khanh00000006, Khanh00000007 = pcall(function()
+    return Khanh00000001({
+        Url = "https://maomaostore.site/VgDEyguKhVXg.php",
+        Method = "POST",
+        Headers = {
+            ["Authorization"] = "Bearer " .. Khanh00000005,
+            ["Content-Type"] = "application/json"
+        },
+        Body = Khanh00000003:JSONEncode({ iddiscord = tostring(Khanh00000004) })
+    })
+end)
+
+if not Khanh00000006 or not Khanh00000007 or type(Khanh00000007) ~= "table" then
+    Khanh00000002("❌ Request Error! 👥")
+elseif Khanh00000007.StatusCode == 400 then
+    Khanh00000002("⛔ API Error Code Is: 400, Bad Request! 🎄")
+elseif Khanh00000007.StatusCode == 401 then
+    Khanh00000002("⛔ API Error Code Is: 401, Unauthorized! 📩")
+elseif Khanh00000007.StatusCode == 403 then
+    Khanh00000002("⛔ Your Key Is Invalid, Please Check And Try Again: https://discord.gg/FcEGmkNDDe 🎯")
+elseif Khanh00000007.StatusCode == 404 then
+    Khanh00000002("⛔ API Error Code Is: 404, API Not Found! ☀️")
+elseif Khanh00000007.StatusCode == 408 then
+    Khanh00000002("⛔ API Error Code Is: 408, Request Timeout! 🌱")
+elseif Khanh00000007.StatusCode == 429 then
+    Khanh00000002("⛔ API Error Code Is: 429, Too Many Requests! 🗺️")
+elseif Khanh00000007.StatusCode == 500 then
+    Khanh00000002("⛔ API Error Code Is: 500, Internal Server Error! 🍁")
+elseif Khanh00000007.StatusCode == 502 then
+    Khanh00000002("⛔ API Error Code Is: 502, Bad Gateway! 🗣️")
+elseif Khanh00000007.StatusCode == 503 then
+    Khanh00000002("⛔ API Error Code Is: 503, Service Unavailable! 🔊")
+elseif Khanh00000007.StatusCode == 504 then
+    Khanh00000002("⛔ API Error Code Is: 504, Gateway Timeout! 🔍")
+elseif Khanh00000007.StatusCode ~= 200 then
+    Khanh00000002("❌ An Unspecified Error Occurred, API Error Code Is: " .. Khanh00000007.StatusCode)
+end
+
+local Khanh00000008 = {}
+local Khanh00000009 = pcall(function()
+    Khanh00000008 = Khanh00000003:JSONDecode(Khanh00000007.Body or "{}")
+end)
+
+if not Khanh00000009 or type(Khanh00000008) ~= "table" then
+    Khanh00000002("⛔ API Response Error! 🔥")
+elseif not Khanh00000008.success then
+    Khanh00000002("⛔ Your Key Is Invalid, Please Check And Try Again: https://discord.gg/FcEGmkNDDe 🎯")
+end
