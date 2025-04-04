@@ -4,7 +4,7 @@ end
 
 print("🥝 Your Key Is: " .. getgenv().SKey)
 print("️🌶️ Your Script Is: " .. getgenv().SScript)
-print(" 🍭Sxionax's Discord: https://discord.gg/FcEGmkNDDe ⏱️")
+print("🍭 Sxionax's Discord: https://discord.gg/FcEGmkNDDe ⏱️")
 print("📌 Sxionax's Best Developer(Mizuhara's Discord): https://discord.gg/2C2vTJX33q 💡")
 
 local YtGzHjXwVqU = game:GetService("HttpService")
