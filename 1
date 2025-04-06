@@ -1,0 +1,100 @@
+local TeleportService = game:GetService("TeleportService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local jobIds = scrapeAPI()
+
+sections.MainSection1:Button({
+    Name = "Auto Hop Server",
+    Callback = function()
+        if tick() - TS > 100 then
+            jobIds = scrapeAPI()
+            if jobIds == "Failed" then
+                return Window:Notify({
+                    Title = Window.Settings.Title,
+                    Description = "Failed to scrape API.",
+                    Lifetime = 5
+                })
+            end
+        end
+    
+        spawn(function()
+            for _, jobId in ipairs(jobIds) do
+                -- Sử dụng TeleportService để teleport tới server
+                local success, err = pcall(function()
+                    TeleportService:TeleportToPlaceInstance(game.PlaceId, jobId)
+                end)
+                
+                if not success then
+                    Window:Notify({
+                        Title = "Error",
+                        Description = "Failed to teleport to server: " .. err,
+                        Lifetime = 5
+                    })
+                end
+                wait(5)
+            end
+        end)
+    end    
+})
+
+sections.MainSection1:Button({
+    Name = "Hop To Choosen Server",
+    Callback = function()
+        if tick() - TS <= 100 then
+            local success, err = pcall(function()
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, ChoosenID)
+            end)
+            
+            if not success then
+                Window:Notify({
+                    Title = "Error",
+                    Description = "Failed to teleport: " .. err,
+                    Lifetime = 5
+                })
+            end
+        end
+    
+        Window:Dialog({
+            Title = Window.Settings.Title,
+            Description = "It seems like the JobID is outdated. Would you like to refresh the server list and then hop?",
+            Buttons = {
+                { Name = "Yes, refresh and TP", Callback = function()
+                    jobIds = scrapeAPI()
+                    if jobIds ~= "Failed" then
+                        ChoosenID = jobIds[math.random(#jobIds)]
+                        local success, err = pcall(function()
+                            TeleportService:TeleportToPlaceInstance(game.PlaceId, ChoosenID)
+                        end)
+                        
+                        if not success then
+                            Window:Notify({
+                                Title = "Error",
+                                Description = "Failed to teleport after refresh: " .. err,
+                                Lifetime = 5
+                            })
+                        end
+                    else
+                        Window:Notify({
+                            Title = Window.Settings.Title,
+                            Description = "Failed to scrape API.",
+                            Lifetime = 5
+                        })
+                    end
+                end },
+                { Name = "No, keep TP", Callback = function()
+                    local success, err = pcall(function()
+                        TeleportService:TeleportToPlaceInstance(game.PlaceId, ChoosenID)
+                    end)
+                    
+                    if not success then
+                        Window:Notify({
+                            Title = "Error",
+                            Description = "Failed to teleport: " .. err,
+                            Lifetime = 5
+                        })
+                    end
+                end }
+            }
+        })
+    end
+})
