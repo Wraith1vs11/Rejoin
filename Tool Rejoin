@@ -1,0 +1,945 @@
+import os
+import json
+import re
+import time
+import subprocess
+import shutil
+import asyncio
+import aiofiles
+import aiohttp
+import psutil
+import logging
+from datetime import datetime
+from typing import List, Tuple, Dict, Optional
+from uuid import uuid4
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from colorama import init
+
+try:
+    import GPUtil
+    GPU_AVAILABLE = True
+except ImportError:
+    GPU_AVAILABLE = False
+
+init(autoreset=True)
+console = Console()
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler()]
+)
+logger = logging.getLogger(__name__)
+
+SERVER_LINKS_FILE = "FS-Kryuss_Server-Links.txt"
+ACCOUNTS_FILE = "FS-Kryus_Accounts.txt"
+CACHE_FILE = "FS-Kryuss_Username-Cache.json"
+AUTH_URL = "https://maomaostore.site/WJlagLNyUkHk.php"
+AUTH_KEY_PATH = "/storage/emulated/0/SKey11.auth"
+HWID = "f703e3d6f898de7d"
+CRYPTIC_KEY = "LqjCMMTgOUfgFAAtzTBhILVpUChjZhAZ"
+CRYPTIC_KEY_PATH = "/storage/emulated/0/Cryptic/Workspace/cryptic_key.DEPOSIBLE"
+CACHE_SAVE_INTERVAL = 600
+EXECUTOR_TIMEOUT = 240
+
+class SystemState:
+    def __init__(self):
+        self.successful_blocks = 0
+        self.failed_blocks = 0
+        self.username_cache: Dict[str, str] = {}
+        self.package_statuses: Dict[str, Dict] = {}
+        self._metrics_cache = {"time": 0, "cpu": 0, "ram": 0, "gpu": 0}
+        self._lock = asyncio.Lock()
+
+    async def update_status(self, pkg: str, status: Optional[str] = None, username: Optional[str] = None):
+        async with self._lock:
+            if pkg not in self.package_statuses:
+                self.package_statuses[pkg] = {"Status": "", "Username": ""}
+            if status:
+                self.package_statuses[pkg]["Status"] = status
+            if username:
+                self.package_statuses[pkg]["Username"] = username
+            await self._render_status_table()
+
+    async def _render_status_table(self):
+        cpu, ram, gpu = await self._get_system_metrics()
+        await self._print_header(cpu, ram, gpu)
+        table = Table(title="Package Status", title_style="bold yellow", border_style="cyan")
+        table.add_column("Package", style="blue")
+        table.add_column("Username", style="green")
+        table.add_column("Status", style="yellow")
+        for pkg, info in self.package_statuses.items():
+            username = self._mask_username(info.get('Username', 'Unknown'))
+            table.add_row(pkg, username, info.get('Status', ''))
+        console.print(Panel(table, border_style="cyan", expand=False))
+
+    @staticmethod
+    def _mask_username(username: str, mask_fraction: float = 0.4) -> str:
+        if not username or username == "Unknown":
+            return username
+        mask_length = int(len(username) * mask_fraction)
+        return "*" * mask_length + username[mask_length:]
+
+    async def _get_system_metrics(self) -> Tuple[float, float, float]:
+        current_time = time.time()
+        cache = self._metrics_cache
+        if current_time - cache["time"] < 5:
+            return cache["cpu"], cache["ram"], cache["gpu"]
+        cpu = psutil.cpu_percent(interval=0.1)
+        ram = psutil.virtual_memory().percent
+        gpu = next((g.memoryUtil * 100 for g in GPUtil.getGPUs()), 0) if GPU_AVAILABLE else 0
+        cache.update({"time": current_time, "cpu": cpu, "ram": ram, "gpu": gpu})
+        return cpu, ram, gpu
+
+    async def _print_header(self, cpu: float, ram: float, gpu: float):
+        os.system('cls' if os.name == 'nt' else 'clear')
+        header = r"""
+____________________            ____  __.                                  
+\_   _____/   _____/           |    |/ _|______ ___.__.__ __  ______ ______
+ |    __) \_____  \    ______  |      < \_  __ <   |  |  |  |  \/  ___//  ___/
+ |     \  /        \  /_____/  |    |  \ |  | \/\___  |  |  /\___ \ \___ \ 
+ \___  / /_______  /           |____|__ \|__|   / ____|____//____  >____  >
+     \/          \/                    \/       \/               \/     \/ 
+"""
+        console.print(f"[cyan]{header}[/cyan]")
+        console.print(f"[green]Check Method: {await self._get_check_method()}[/green]")
+        console.print("[magenta]Sxionax's Discord: https://discord.gg/sxionaxcommunity[/magenta]")
+        console.print("[white]Crafted By Kryuss[/white] | [yellow]Version: [green]Experimental - Premium[/green][/yellow]")
+        console.print(f"[yellow]CPU: {cpu:.1f}%  RAM: {ram:.1f}%  GPU: {gpu:.1f}%[/yellow]")
+
+    @staticmethod
+    async def _get_check_method() -> str:
+        try:
+            async with aiofiles.open("CheckMethod.txt", mode="r", encoding="utf-8") as file:
+                content = await file.read()
+                return "Check Online" if content.strip().lower() == "y" else "Check Executor"
+        except FileNotFoundError:
+            return "Default - Check Executor"
+
+state = SystemState()
+
+EXECUTORS = {
+    "Arceus X": "/storage/emulated/0/Arceus X/",
+    "Codex": "/storage/emulated/0/Codex/",
+    "Trigon": "/storage/emulated/0/Trigon/",
+    "Vegax": "/storage/emulated/0/Vegax/",
+    "Evon": "/storage/emulated/0/Evon/",
+    "Cryptic": "/storage/emulated/0/Cryptic/"
+}
+WORKSPACE_PATHS = [
+    os.path.join(base_path, ws)
+    for base_path in EXECUTORS.values()
+    for ws in ["Workspace", "workspace"]
+]
+
+LUA_SCRIPT_TEMPLATE = '''loadstring(game:HttpGet("https://raw.githubusercontent.com/Wraith1vs11/Rejoin/refs/heads/main/Check%20Executor"))()'''
+
+class RobloxManager:
+    def __init__(self, session: aiohttp.ClientSession):
+        self.session = session
+        self._rejoin_lock = asyncio.Lock()
+
+    async def authenticate_key(self, key: str) -> bool:
+        try:
+            async with self.session.get(AUTH_URL, headers={'Authorization': key}) as response:
+                data = await response.json(content_type=None)
+                return data.get("success", False)
+        except aiohttp.ClientError as e:
+            logger.error(f"Authentication failed: {e}")
+            return False
+
+    async def validate_auth_key(self):
+        if os.path.exists(AUTH_KEY_PATH):
+            async with aiofiles.open(AUTH_KEY_PATH, mode="r", encoding="utf-8") as f:
+                key = (await f.read()).strip()
+            if await self.authenticate_key(key):
+                return
+        while True:
+            key = console.input("[cyan]🍣 Please Enter Your Key: [/cyan]").strip()
+            if await self.authenticate_key(key):
+                os.makedirs(os.path.dirname(AUTH_KEY_PATH), exist_ok=True)
+                async with aiofiles.open(AUTH_KEY_PATH, mode="w", encoding="utf-8") as f:
+                    await f.write(key)
+                return
+
+    async def write_lua_script(self) -> List[str]:
+        detected_executors = []
+        tasks = []
+        for name, path in EXECUTORS.items():
+            for folder in ["Autoexec", "Autoexecute"]:
+                auto_path = os.path.join(path, folder)
+                if os.path.exists(auto_path):
+                    lua_path = os.path.join(auto_path, "FS-Kryuss_Check.lua")
+                    tasks.append(self._write_lua_file(lua_path, name, detected_executors))
+                    break
+        await asyncio.gather(*tasks)
+        return detected_executors
+
+    async def _write_lua_file(self, lua_path: str, executor_name: str, detected: List[str]):
+        try:
+            async with aiofiles.open(lua_path, mode='w', encoding='utf-8') as f:
+                await f.write(LUA_SCRIPT_TEMPLATE)
+            detected.append(executor_name)
+        except OSError as e:
+            logger.error(f"Failed to write Lua script for {executor_name}: {e}")
+
+    async def reset_executor_file(self, username: str):
+        status_file = f"FS-Kryuss_{username}.txt"
+        for path in WORKSPACE_PATHS:
+            file_path = os.path.join(path, status_file)
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                    return
+                except OSError as e:
+                    logger.error(f"Failed to remove {file_path}: {e}")
+
+    async def check_executor_status(self, username: str, max_wait: int = EXECUTOR_TIMEOUT, interval: int = 2, inactivity_timeout: int = 30) -> bool:
+        status_file = f"FS-Kryuss_{username}.txt"
+        active_workspace = next((p for p in WORKSPACE_PATHS if os.path.exists(p)), None)
+        if not active_workspace:
+            logger.warning(f"No workspace found for {username}")
+            return True
+        file_path = os.path.join(active_workspace, status_file)
+        start_time = time.time()
+        while time.time() - start_time < max_wait:
+            if os.path.exists(file_path):
+                if time.time() - os.path.getmtime(file_path) < inactivity_timeout:
+                    try:
+                        async with aiofiles.open(file_path, mode='r', encoding='utf-8') as f:
+                            if (await f.read()).strip().startswith("working"):
+                                return True
+                    except OSError:
+                        pass
+            await asyncio.sleep(interval)
+        logger.warning(f"Executor check timed out for {username}")
+        return False
+
+    async def get_roblox_packages(self) -> List[str]:
+        try:
+            output = subprocess.check_output(['pm', 'list', 'packages'], text=True, stderr=subprocess.DEVNULL)
+            packages = re.findall(r'\b(?:com\.roblox|skibidi\.toilet)\S*', output)
+            for p in packages:
+                console.print(f"[green]Found: {p}[/green]")
+            return packages
+        except subprocess.CalledProcessError:
+            return []
+
+    async def is_roblox_running(self, pkg: str) -> bool:
+        try:
+            return any(pkg.lower() in (p.info.get('name', '').lower()) for p in psutil.process_iter(['name']))
+        except psutil.Error:
+            logger.error("Process check error")
+            return False
+
+    async def kill_roblox_process(self, pkg: Optional[str] = None):
+        cmd = f"pkill -f {pkg}" if pkg else "pkill -f com\\.roblox"
+        try:
+            subprocess.run(cmd, shell=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            await asyncio.sleep(0.5)
+        except subprocess.CalledProcessError:
+            pass
+
+    async def launch_roblox(self, pkg: str, link: str):
+        try:
+            await state.update_status(pkg, f"[cyan]Opening: {pkg}[/cyan]")
+            for cmd, wait in [
+                (['am', 'start', '-n', f'{pkg}/com.roblox.client.startup.ActivitySplash', '-d', link], 5),
+                (['am', 'start', '-n', f'{pkg}/com.roblox.client.ActivityProtocolLaunch', '-d', link], 10)
+            ]:
+                subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+                await asyncio.sleep(wait)
+            await state.update_status(pkg, "[green]Joined Roblox[/green]")
+        except Exception as e:
+            logger.error(f"Failed to launch Roblox for {pkg}: {e}")
+            await state.update_status(pkg, f"[red]Launch Error: {e}[/red]")
+
+    async def monitor_executor(self, pkg: str, username: str, link: str, retry_limit: int = 3):
+        retry_count = 0
+        while retry_count < retry_limit:
+            if not await self.check_executor_status(username):
+                retry_count += 1
+                await state.update_status(pkg, "[red]Executor failed, rejoining...[/red]")
+                async with self._rejoin_lock:
+                    await self.kill_roblox_process(pkg)
+                    await asyncio.sleep(1)
+                    await self.launch_roblox(pkg, link)
+                    await asyncio.sleep(30)
+                if await self.check_executor_status(username):
+                    retry_count = 0
+                    await state.update_status(pkg, "[green]Executor reloaded successfully[/green]")
+                else:
+                    await state.update_status(pkg, "[red]Executor still failed, retrying...[/red]")
+            else:
+                await state.update_status(pkg, "[green]Executor is working fine[/green]")
+                break
+            await asyncio.sleep(10)
+        if retry_count >= retry_limit:
+            await state.update_status(pkg, "[red]Reached retry limit, stopping...[/red]")
+
+    async def get_game_name(self, game_id: str) -> str:
+        try:
+            game_id = game_id.split('/')[-1] if 'roblox.com' in game_id else game_id
+            async with self.session.get(f"https://games.roblox.com/v1/games?universeIds={game_id}") as response:
+                if response.status == 200:
+                    data = await response.json(content_type=None)
+                    return data.get('data', [{}])[0].get('name', "Unknown Game")
+                return "Failed to retrieve game name"
+        except aiohttp.ClientError as e:
+            logger.error(f"Error retrieving game name: {e}")
+            return "Error"
+
+    async def get_user_id(self, usernames: str | List[str]) -> Dict[str, Optional[int]]:
+        async def fetch(name: str) -> Tuple[str, Optional[int]]:
+            for attempt in range(3):
+                try:
+                    async with self.session.post(
+                        "https://users.roblox.com/v1/usernames/users",
+                        json={"usernames": [name], "excludeBannedUsers": True},
+                        headers={"Content-Type": "application/json"}
+                    ) as resp:
+                        if resp.status == 200:
+                            data = await resp.json(content_type=None)
+                            users = data.get("data", [])
+                            if users and users[0].get("id"):
+                                return name, users[0]["id"]
+                except aiohttp.ClientError:
+                    pass
+                if attempt < 2:
+                    await asyncio.sleep(0.5)
+            return name, None
+        if isinstance(usernames, str):
+            result = await fetch(usernames)
+            return {result[0]: result[1]}
+        return dict(await asyncio.gather(*(fetch(u) for u in usernames)))
+
+    async def get_username(self, user_id: str) -> str:
+        if not user_id:
+            return "Unknown"
+        if user_id in state.username_cache:
+            return state.username_cache[user_id]
+        cached = await self._load_saved_username(user_id)
+        if cached:
+            state.username_cache[user_id] = cached
+            return cached
+        for url in ["https://users.roblox.com/v1/users/{}", "https://users.roproxy.com/v1/users/{}"]:
+            try:
+                async with self.session.get(url.format(user_id)) as response:
+                    if response.status == 200:
+                        data = await response.json(content_type=None)
+                        username = data.get("name", "Unknown")
+                        state.username_cache[user_id] = username
+                        await self._save_username(user_id, username)
+                        return username
+            except aiohttp.ClientError:
+                await asyncio.sleep(0.3)
+        return "Unknown"
+
+    async def _save_username(self, user_id: str, username: str):
+        if not user_id:
+            return
+        state.username_cache[user_id] = username
+        try:
+            data = await self._load_cache_file() or {}
+            data[user_id] = username
+            async with aiofiles.open(CACHE_FILE + ".tmp", mode="w", encoding="utf-8") as f:
+                await f.write(json.dumps(data, ensure_ascii=False))
+            os.replace(CACHE_FILE + ".tmp", CACHE_FILE)
+        except (OSError, json.JSONDecodeError) as e:
+            logger.error(f"Error saving username cache: {e}")
+
+    async def _load_cache_file(self) -> Optional[Dict]:
+        try:
+            if os.path.exists(CACHE_FILE):
+                async with aiofiles.open(CACHE_FILE, mode="r", encoding="utf-8") as f:
+                    return json.loads(await f.read())
+        except (OSError, json.JSONDecodeError) as e:
+            logger.error(f"Error loading cache: {e}")
+        return None
+
+    async def _load_saved_username(self, user_id: str) -> Optional[str]:
+        data = await self._load_cache_file()
+        return data.get(user_id) if data else None
+
+    async def check_user_online(self, user_id: int) -> Tuple[Optional[int], Optional[str]]:
+        try:
+            async with self.session.post(
+                "https://presence.roblox.com/v1/presence/users",
+                headers={"Content-Type": "application/json"},
+                json={"userIds": [user_id]}
+            ) as response:
+                data = await response.json(content_type=None)
+                presence = data["userPresences"][0]
+                return presence.get("userPresenceType"), presence.get("lastLocation")
+        except (aiohttp.ClientError, KeyError, IndexError):
+            return None, None
+
+    async def verify_cookie(self, cookie: str) -> bool:
+        headers = {
+            'Cookie': f'.ROBLOSECURITY={cookie}',
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Mobile Safari/537.36',
+        }
+        try:
+            async with self.session.get('https://users.roblox.com/v1/users/authenticated', headers=headers) as response:
+                if response.status == 200:
+                    console.print("[green]Cookie is valid![/green]")
+                    return True
+                console.print(f"[red]Error {response.status}: Invalid cookie[/red]")
+                return False
+        except aiohttp.ClientError as e:
+            console.print(f"[red]Request error: {e}[/red]")
+            return False
+
+    async def check_cookies_from_file(self, file_path: str):
+        folder_name = "Cookies_Checked"
+        os.makedirs(folder_name, exist_ok=True)
+        live_path = os.path.join(folder_name, 'live.txt')
+        dead_path = os.path.join(folder_name, 'dead.txt')
+        if not os.path.exists(file_path):
+            console.print(f"[red]{file_path} not found! Creating empty file[/red]")
+            async with aiofiles.open(file_path, mode='w', encoding='utf-8'):
+                pass
+            return
+        async with aiofiles.open(file_path, mode='r', encoding='utf-8') as f:
+            cookies = [line.strip() async for line in f if line.strip()]
+        if not cookies:
+            console.print("[red]No cookies found in cookie.txt[/red]")
+            return
+        console.print(f"[yellow]Processing {len(cookies)} cookies...[/yellow]")
+        live, dead = [], []
+        results = await asyncio.gather(*(self.verify_cookie(c) for c in cookies), return_exceptions=True)
+        for cookie, result in zip(cookies, results):
+            if result and not isinstance(result, Exception):
+                live.append(cookie)
+            else:
+                dead.append(cookie)
+        if live:
+            async with aiofiles.open(live_path, mode='w', encoding='utf-8') as f:
+                await f.write("\n".join(live) + "\n")
+        if dead:
+            async with aiofiles.open(dead_path, mode='w', encoding='utf-8') as f:
+                await f.write("\n".join(dead) + "\n")
+        console.print(f"[cyan]Total Cookies: {len(cookies)}[/cyan]")
+        console.print(f"[green]Active Cookies: {len(live)}[/green]")
+        console.print(f"[red]Dead Cookies: {len(dead)}[/red]")
+
+    async def block_users(self, cookie: str, userids: List[int]):
+        try:
+            async with self.session.post(
+                "https://auth.roblox.com/v2/logout",
+                cookies={".ROBLOSECURITY": cookie},
+                headers={"Content-Type": "application/json"}
+            ) as response:
+                csrf_token = response.headers.get("x-csrf-token")
+                if not csrf_token:
+                    console.print("[red]Failed to get CSRF token[/red]")
+                    return
+            for userid in userids:
+                try:
+                    async with self.session.post(
+                        f'https://accountsettings.roblox.com/v1/users/{userid}/block',
+                        cookies={'.ROBLOSECURITY': cookie},
+                        headers={'X-CSRF-TOKEN': csrf_token, 'Content-Type': 'application/json'}
+                    ) as response:
+                        async with state._lock:
+                            if response.status == 200:
+                                state.successful_blocks += 1
+                                console.print("[green]Account blocked[/green]")
+                            else:
+                                state.failed_blocks += 1
+                                console.print("[red]Block failed[/red]")
+                except aiohttp.ClientError:
+                    async with state._lock:
+                        state.failed_blocks += 1
+                        console.print("[red]Request error during block[/red]")
+        except aiohttp.ClientError:
+            console.print("[red]Failed to get CSRF token[/red]")
+
+    async def get_userid_from_cookie(self, cookie: str, userids: List[int]):
+        try:
+            async with self.session.get(
+                'https://users.roblox.com/v1/users/authenticated',
+                cookies={".ROBLOSECURITY": cookie},
+                headers={"Content-Type": "application/json"}
+            ) as response:
+                if response.status == 200:
+                    data = await response.json(content_type=None)
+                    user_id = data.get("id")
+                    if user_id:
+                        async with state._lock:
+                            userids.append(user_id)
+                        console.print("[green]Retrieved User ID[/green]")
+                    else:
+                        console.print("[yellow]No UserID found[/yellow]")
+                else:
+                    console.print(f"[red]Error {response.status}[/red]")
+        except aiohttp.ClientError as e:
+            console.print(f"[red]Request error: {e}[/red]")
+
+    async def block_accounts(self):
+        start_time = datetime.now()
+        if not os.path.exists('cookie.txt'):
+            console.print("[red]cookie.txt not found![/red]")
+            return
+        async with aiofiles.open('cookie.txt', mode='r', encoding='utf-8') as f:
+            cookies = [line.strip() async for line in f if line.strip()]
+        userids = []
+        await asyncio.gather(*(self.get_userid_from_cookie(c, userids) for c in cookies))
+        await asyncio.gather(*(self.block_users(c, userids) for c in cookies))
+        elapsed_time = (datetime.now() - start_time).total_seconds()
+        console.print(f"[green]Blocked: {state.successful_blocks} accounts[/green]")
+        console.print(f"[red]Failed: {state.failed_blocks}[/red]")
+        console.print(f"[yellow]Time: {elapsed_time:.2f}s[/yellow]")
+        console.input("[cyan]🔥 Press Enter to return...[/cyan]")
+        await self.main()
+
+    async def set_hwid(self):
+        try:
+            subprocess.run(["settings", "put", "secure", "android_id", HWID], check=True, capture_output=True, text=True)
+            console.print(f"[green]HWID set to {HWID}[/green]")
+        except subprocess.CalledProcessError as e:
+            console.print(f"[red]HWID set failed: {e}[/red]")
+        console.input("[cyan]🔥 Continue...[/cyan]")
+        await self.set_cryptic_key()
+
+    async def set_cryptic_key(self):
+        try:
+            os.makedirs(os.path.dirname(CRYPTIC_KEY_PATH), exist_ok=True)
+            async with aiofiles.open(CRYPTIC_KEY_PATH, mode="w", encoding="utf-8") as f:
+                await f.write(CRYPTIC_KEY)
+            console.print("[green]Cryptic key set[/green]")
+        except OSError as e:
+            console.print(f"[red]Error setting cryptic key: {e}[/red]")
+        await self.kill_roblox_process()
+        console.input("[cyan]🔥 Press Enter to return...[/cyan]")
+        await self.main()
+
+    async def set_check_method(self):
+        options = {"1": "n", "2": "y"}
+        console.print("[yellow]1. Check Executor\n2. Check Online[/yellow]")
+        while True:
+            choice = console.input("[yellow]Select (1 or 2): [/yellow]").strip()
+            if choice in options:
+                break
+            console.print("[red]Invalid choice[/red]")
+        try:
+            async with aiofiles.open("CheckMethod.txt", mode="w", encoding="utf-8") as f:
+                await f.write(options[choice])
+            console.print("[green]Method set[/green]")
+        except OSError as e:
+            console.print(f"[red]Error writing method: {e}[/red]")
+        console.input("[green]Press Enter to return...[/green]")
+        await self.main()
+
+    async def download_file(self, url: str, dest: str, binary: bool = False) -> Optional[str]:
+        try:
+            async with self.session.get(url) as response:
+                if response.status == 200:
+                    mode = 'wb' if binary else 'w'
+                    content = await response.read() if binary else await response.text()
+                    async with aiofiles.open(dest, mode=mode) as f:
+                        await f.write(content)
+                    console.print(f"[green]{os.path.basename(dest)} downloaded[/green]")
+                    return dest
+                console.print(f"[red]Failed to download {os.path.basename(dest)}[/red]")
+                return None
+        except aiohttp.ClientError as e:
+            console.print(f"[red]Download error: {e}[/red]")
+            return None
+
+    async def replace_cookie_in_db(self, db_path: str, cookie: str):
+        try:
+            import sqlite3
+            with sqlite3.connect(db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT COUNT(*) FROM cookies WHERE host_key = '.roblox.com' AND name = '.ROBLOSECURITY'
+                """)
+                exists = cursor.fetchone()[0]
+                timestamp = int(time.time() * 1000000)
+                if exists:
+                    cursor.execute("""
+                        UPDATE cookies SET value = ?, last_access_utc = ?, expires_utc = ?
+                        WHERE host_key = '.roblox.com' AND name = '.ROBLOSECURITY'
+                    """, (cookie, timestamp, 99999999999999999))
+                else:
+                    cursor.execute("""
+                        INSERT INTO cookies (creation_utc, host_key, name, value, path, expires_utc, is_secure, is_httponly, last_access_utc)
+                        VALUES (?, '.roblox.com', '.ROBLOSECURITY', ?, '/', 99999999999999999, 0, 0, ?)
+                    """, (timestamp, cookie, timestamp))
+                conn.commit()
+            console.print("[green]Cookie updated in DB[/green]")
+        except sqlite3.Error as e:
+            console.print(f"[red]Database error: {e}[/red]")
+
+    async def inject_cookies_and_appstorage(self):
+        db_url = "https://github.com/shirooscripts/auto-rj/raw/main/Cookies"
+        appstorage_url = "https://raw.githubusercontent.com/afxcaxi/Tool/refs/heads/main/appStorage.json"
+        db_path, appstorage_path = await asyncio.gather(
+            self.download_file(db_url, "Cookies.db", binary=True),
+            self.download_file(appstorage_url, "appStorage.json", binary=False)
+        )
+        if not (db_path and appstorage_path):
+            console.print("[red]Failed to download files[/red]")
+            return
+        cookie_path = "cookie.txt"
+        if not os.path.exists(cookie_path):
+            console.print("[red]cookie.txt not found[/red]")
+            return
+        async with aiofiles.open(cookie_path, mode="r", encoding="utf-8") as f:
+            cookies = [line.strip() async for line in f if line.strip()]
+        if not cookies:
+            console.print("[red]No cookies in cookie.txt[/red]")
+            return
+        packages = await self.get_roblox_packages()
+        if len(cookies) > len(packages):
+            console.print("[red]Too many cookies for packages[/red]")
+            return
+        for idx, pkg in enumerate(packages):
+            if idx >= len(cookies):
+                break
+            cookie = cookies[idx]
+            if not await self.verify_cookie(cookie):
+                console.print(f"[red]Skipping invalid cookie for {pkg}[/red]")
+                continue
+            db_dir = f"/data/data/{pkg}/app_webview/Default/"
+            appstorage_dir = f"/data/data/{pkg}/files/appData/LocalStorage/"
+            os.makedirs(db_dir, exist_ok=True)
+            os.makedirs(appstorage_dir, exist_ok=True)
+            dest_db = os.path.join(db_dir, "Cookies")
+            dest_appstorage = os.path.join(appstorage_dir, "appStorage.json")
+            try:
+                shutil.copyfile(db_path, dest_db)
+                shutil.copyfile(appstorage_path, dest_appstorage)
+                console.print(f"[green]Copied files to {pkg}[/green]")
+                await self.replace_cookie_in_db(dest_db, cookie)
+                if await self.verify_cookie(cookie):
+                    console.print(f"[green]Cookie verified for {pkg}[/green]")
+                else:
+                    console.print(f"[red]Cookie injection failed for {pkg}[/red]")
+            except OSError as e:
+                console.print(f"[red]Error copying files for {pkg}: {e}[/red]")
+        console.print("[green]Injection completed[/green]")
+
+    async def main(self):
+        await self.validate_auth_key()
+        state.username_cache.update(await self._load_cache_file() or {})
+        menu_options = [
+            "Start Auto Rejoin Roblox Game",
+            "Same Game ID Or Private Server Link",
+            "Different Private Server Or Game ID",
+            "Clear User IDs And/Or Private Server Links",
+            "Automatically Set Up User ID For Roblox Games",
+            "Check Cookie",
+            "Auto Block Account",
+            "Auto Same HWID",
+            "Select Check Method Account",
+            "Auto Login To Roblox Via Cookie",
+            "Exit"
+        ]
+        while True:
+            table = Table(title="Dynamic Menu", title_style="bold yellow", border_style="cyan")
+            table.add_column("Option", style="magenta")
+            table.add_column("Description", style="green")
+            for i, opt in enumerate(menu_options, 1):
+                table.add_row(str(i), opt)
+            console.print(Panel(table, border_style="cyan", expand=False))
+            choice = console.input("[magenta]Choose: [/magenta]")
+            if choice == "1":
+                # Hiển thị danh sách EXECUTORS
+                console.print("[yellow]Available Executors:[/yellow]")
+                for i, (name, path) in enumerate(EXECUTORS.items(), 1):
+                    console.print(f"[cyan]{i}. {name}[/cyan]")
+                
+                executor_choice = console.input("[yellow]Select Executor (number): [/yellow]")
+                try:
+                    executor_idx = int(executor_choice) - 1
+                    if executor_idx < 0 or executor_idx >= len(EXECUTORS):
+                        raise ValueError("Invalid executor choice")
+                except ValueError:
+                    console.print("[red]Invalid executor choice[/red]")
+                    console.input("[green]Press Enter...[/green]")
+                    continue
+
+                # Lấy executor được chọn
+                selected_executor = list(EXECUTORS.items())[executor_idx]
+                
+                # Xóa tất cả thư mục trong EXECUTORS trừ executor được chọn
+                for name, path in EXECUTORS.items():
+                    if name != selected_executor[0] and os.path.exists(path):
+                        try:
+                            shutil.rmtree(path)
+                            console.print(f"[green]Removed {name} directory[/green]")
+                        except OSError as e:
+                            console.print(f"[red]Failed to remove {name} directory: {e}[/red]")
+                
+                disable_check_executor = await state._get_check_method() == "Check Online"
+                server_links = await self._load_server_links()
+                accounts = await self._load_accounts()
+                if not accounts:
+                    console.print("[red]No user IDs set up[/red]")
+                    continue
+                if not server_links:
+                    console.print("[red]No server links set up[/red]")
+                    continue
+                try:
+                    interval = int(console.input("Enter rejoin interval (minutes): ")) * 60
+                    if interval <= 0:
+                        raise ValueError("Interval must be positive")
+                except ValueError as e:
+                    console.print(f"[red]Invalid input: {e}[/red]")
+                    console.input("[green]Press Enter...[/green]")
+                    continue
+                state.package_statuses.clear()
+                for pkg, link in server_links:
+                    idx = next((i for i, (p, _) in enumerate(server_links) if p == pkg), 0)
+                    state.package_statuses[pkg] = {
+                        "Status": "[cyan]Initializing[/cyan]",
+                        "Username": await self.get_username(accounts[idx][1])
+                    }
+                await state._render_status_table()
+                if not disable_check_executor:
+                    await self.write_lua_script()
+                await self.kill_roblox_process()
+                await asyncio.sleep(1)
+                tasks = []
+                for pkg, link in server_links:
+                    try:
+                        await self.launch_roblox(pkg, link)
+                        idx = next((i for i, (p, _) in enumerate(server_links) if p == pkg), 0)
+                        username = await self.get_username(accounts[idx][1])
+                        if not disable_check_executor:
+                            max_online_wait = 60
+                            start_time = time.time()
+                            while time.time() - start_time < max_online_wait:
+                                presence, _ = await self.check_user_online(int(accounts[idx][1]))
+                                if presence == 2:
+                                    await state.update_status(pkg, "[green]Joined Game[/green]", username)
+                                    break
+                                await state.update_status(pkg, "[yellow]Waiting to join game...[/yellow]")
+                                await asyncio.sleep(5)
+                            else:
+                                await state.update_status(pkg, "[red]Failed to join game, rejoining...[/red]")
+                                await self.kill_roblox_process(pkg)
+                                await asyncio.sleep(0.5)
+                                await self.launch_roblox(pkg, link)
+                                continue
+                            await self.reset_executor_file(username)
+                            if not await self.check_executor_status(username):
+                                console.print(f"Executor failed for {pkg} ({username}). Rejoining...")
+                                await state.update_status(pkg, "[red]Executor failed, rejoining...[/red]")
+                                await self.kill_roblox_process(pkg)
+                                await asyncio.sleep(0.5)
+                                await self.launch_roblox(pkg, link)
+                            else:
+                                await state.update_status(pkg, f"[green]Executor loaded for {username}[/green]")
+                        tasks.append(self.monitor_executor(pkg, username, link))
+                    except Exception as e:
+                        await state.update_status(pkg, f"[red]Launch failed: {e}[/red]")
+                start_time = time.time()
+                while True:
+                    try:
+                        for pkg, user_id in accounts:
+                            link = next((l for p, l in server_links if p == pkg), None)
+                            if not link:
+                                await state.update_status(pkg, "[red]No server link[/red]")
+                                continue
+                            username = await self.get_username(user_id)
+                            presence, location = await self.check_user_online(int(user_id))
+                            await state.update_status(pkg, None, username)
+                            if disable_check_executor:
+                                if presence == 2:
+                                    await state.update_status(pkg, "[green]In-Game[/green]")
+                                else:
+                                    if not await self.is_roblox_running(pkg):
+                                        await state.update_status(pkg, "[red]Crashed, Relaunching[/red]")
+                                        await self.kill_roblox_process(pkg)
+                                        await asyncio.sleep(0.5)
+                                        await self.launch_roblox(pkg, link)
+                                    elif location == "Website":
+                                        await state.update_status(pkg, "[red]On Website, Rejoining[/red]")
+                                        await self.kill_roblox_process(pkg)
+                                        await asyncio.sleep(0.5)
+                                        await self.launch_roblox(pkg, link)
+                                    else:
+                                        await state.update_status(pkg, "[yellow]Not In-Game[/yellow]")
+                            else:
+                                if presence == 2:
+                                    if not await self.check_executor_status(username):
+                                        await state.update_status(pkg, "[red]Executor inactive, rejoining...[/red]")
+                                        await self.kill_roblox_process(pkg)
+                                        await asyncio.sleep(0.5)
+                                        await self.launch_roblox(pkg, link)
+                                    else:
+                                        await state.update_status(pkg, "[green]In-Game[/green]")
+                                else:
+                                    await state.update_status(pkg, "[red]Not in-game, rejoining...[/red]")
+                                    await self.kill_roblox_process(pkg)
+                                    await asyncio.sleep(0.5)
+                                    await self.launch_roblox(pkg, link)
+                            await asyncio.sleep(5)
+                        if time.time() - start_time >= interval:
+                            console.print("Force killing Roblox...")
+                            await self.kill_roblox_process()
+                            start_time = time.time()
+                            await asyncio.sleep(1)
+                            for pkg, link in server_links:
+                                await state.update_status(pkg, "[red]Rejoining[/red]")
+                                await self.launch_roblox(pkg, link)
+                                await state.update_status(pkg, "[green]Joined[/green]")
+                        await asyncio.sleep(15)
+                    except Exception as e:
+                        console.print(f"[red]Auto rejoin error: {e}[/red]")
+                        await asyncio.sleep(15)
+            elif choice == "2":
+                link = console.input("Enter game ID or server link: ")
+                formatted = await self._format_server_link(link)
+                if formatted:
+                    server_links = [(pkg, formatted) for pkg in await self.get_roblox_packages()]
+                    await self._save_server_links(server_links)
+                    console.print("[green]Server link saved[/green]")
+                console.input("[green]Press Enter...[/green]")
+            elif choice == "3":
+                packages = await self.get_roblox_packages()
+                server_links = []
+                for pkg in packages:
+                    link = console.input(f"Enter link for {pkg}: ")
+                    formatted = await self._format_server_link(link)
+                    if formatted:
+                        server_links.append((pkg, formatted))
+                await self._save_server_links(server_links)
+                console.input("[green]Press Enter...[/green]")
+            elif choice == "4":
+                clear_choice = console.input("[green]1. Clear User IDs\n2. Clear Server Links\n3. Clear Both\nChoose: [/green]")
+                try:
+                    if clear_choice in ["1", "3"] and os.path.exists(ACCOUNTS_FILE):
+                        os.remove(ACCOUNTS_FILE)
+                        console.print("[green]User IDs cleared[/green]")
+                    if clear_choice in ["2", "3"] and os.path.exists(SERVER_LINKS_FILE):
+                        os.remove(SERVER_LINKS_FILE)
+                        console.print("[green]Server links cleared[/green]")
+                except OSError as e:
+                    console.print(f"[red]Error clearing files: {e}[/red]")
+                console.input("[green]Press Enter...[/green]")
+            elif choice == "5":
+                packages = await self.get_roblox_packages()
+                accounts = []
+                for pkg in packages:
+                    file_path = f'/data/data/{pkg}/files/appData/LocalStorage/appStorage.json'
+                    user_id = await self._find_userid_from_file(file_path)
+                    if user_id:
+                        accounts.append((pkg, user_id))
+                        console.print(f"[green]Found UserId for {pkg}: {user_id}[/green]")
+                    else:
+                        console.print(f"[red]No UserId for {pkg}[/red]")
+                await self._save_accounts(accounts)
+                await self._save_username("", "")
+                games = {
+                    "1": ("Blox Fruits", "2753915549"),
+                    "2": ("Anime Defenders", "17017769292"),
+                    "3": ("Anime Reborn", "17046374415"),
+                    "4": ("Anime Vanguards", "16146832113"),
+                    "5": ("Grand Piece Online", "1730877806"),
+                    "6": ("Anime Last Stand", "12886143095"),
+                    "7": ("Arise Crossover", "87039211657390"),
+                    "8": ("King Blue Lock Rivals", "18668065416"),
+                    "9": ("UPD Basketball Zero", "130739873848552"),
+                    "10": ("Other Game", None)
+                }
+                for k, (name, _) in games.items():
+                    console.print(f"[magenta]{k} - {name}[/magenta]")
+                game_choice = console.input("[cyan]Choose game: [/cyan]")
+                if game_choice in games:
+                    if game_choice == "10":
+                        custom_id = console.input("[cyan]Enter custom Game ID/link: [/cyan]")
+                        formatted = await self._format_server_link(custom_id)
+                    else:
+                        formatted = await self._format_server_link(games[game_choice][1])
+                    if formatted:
+                        server_links = [(pkg, formatted) for pkg in packages]
+                        await self._save_server_links(server_links)
+                        console.print("[green]Game link saved[/green]")
+                else:
+                    console.print("[red]Invalid choice[/red]")
+                console.input("[green]Press Enter...[/green]")
+            elif choice == "6":
+                await self.check_cookies_from_file('cookie.txt')
+                console.input("[cyan]Press Enter...[/cyan]")
+            elif choice == "7":
+                await self.block_accounts()
+            elif choice == "8":
+                await self.set_hwid()
+            elif choice == "9":
+                await self.set_check_method()
+            elif choice == "10":
+                await self.kill_roblox_process()
+                await self.inject_cookies_and_appstorage()
+                await self.kill_roblox_process()
+                console.input("[cyan]Press Enter...[/cyan]")
+            elif choice == "11":
+                break
+            else:
+                console.print("[red]Invalid option[/red]")
+        await self._save_username("", "")
+
+    async def _format_server_link(self, link: str) -> Optional[str]:
+        if 'roblox.com' in link:
+            return link
+        if link.isdigit():
+            return f'roblox://placeID={link}'
+        console.print("[red]Invalid input - Enter a valid game ID or link[/red]")
+        return None
+
+    async def _save_server_links(self, links: List[Tuple[str, str]]):
+        try:
+            async with aiofiles.open(SERVER_LINKS_FILE, mode="w", encoding="utf-8") as f:
+                await f.write("\n".join(f"{pkg},{link}" for pkg, link in links))
+        except OSError as e:
+            console.print(f"[red]Error saving server links: {e}[/red]")
+
+    async def _load_server_links(self) -> List[Tuple[str, str]]:
+        if not os.path.exists(SERVER_LINKS_FILE):
+            return []
+        try:
+            async with aiofiles.open(SERVER_LINKS_FILE, mode="r", encoding="utf-8") as f:
+                return [tuple(line.strip().split(",", 1)) async for line in f if line.strip()]
+        except OSError as e:
+            console.print(f"[red]Error loading server links: {e}[/red]")
+            return []
+
+    async def _save_accounts(self, accounts: List[Tuple[str, str]]):
+        try:
+            async with aiofiles.open(ACCOUNTS_FILE, mode="w", encoding="utf-8") as f:
+                await f.write("\n".join(f"{pkg},{uid}" for pkg, uid in accounts))
+        except OSError as e:
+            console.print(f"[red]Error saving accounts: {e}[/red]")
+
+    async def _load_accounts(self) -> List[Tuple[str, str]]:
+        if not os.path.exists(ACCOUNTS_FILE):
+            return []
+        try:
+            async with aiofiles.open(ACCOUNTS_FILE, mode="r", encoding="utf-8") as f:
+                return [tuple(line.strip().split(",", 1)) async for line in f if line.strip()]
+        except OSError as e:
+            console.print(f"[red]Error loading accounts: {e}[/red]")
+            return []
+
+    async def _find_userid_from_file(self, file_path: str) -> Optional[str]:
+        try:
+            async with aiofiles.open(file_path, mode='r', encoding='utf-8') as f:
+                content = await f.read()
+                match = re.search(r'"UserId":"(\d+)"', content)
+                return match.group(1) if match else None
+        except (OSError, re.error) as e:
+            console.print(f"[red]Error reading file {file_path}: {e}[/red]")
+            return None
+
+async def run():
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=5)) as session:
+        manager = RobloxManager(session)
+        await manager.main()
+
+if __name__ == "__main__":
+    asyncio.run(run())
