@@ -1,0 +1,4 @@
+local filePath, key = "skullhub_key.txt", "SkullHubbe009502f89fe22b745448bdf"
+if not isfile(filePath) or readfile(filePath) ~= key then
+    writefile(filePath, key)
+end
