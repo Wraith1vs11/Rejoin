@@ -8,4 +8,4 @@ yes | pkg update
 yes | pkg upgrade
 yes | pkg i python
 yes | pkg i python-pip
-pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio
+pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio aiofiles
