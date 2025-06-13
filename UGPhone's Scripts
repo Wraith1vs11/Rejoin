@@ -1,0 +1,6 @@
+-- 🎬 My Discord Is: https://discord.gg/FcEGmkNDDe 🔔
+-- 🎞️ My Youtube Is: https://www.youtube.com/@NexusHideoutUG 📸
+-- 📚 My Information Is: https://zyo.lol/Sxionax 💬
+
+script_key="jnMPdKoikMaJwnFAjHzBDEhRETVTqiNY";
+loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/5cd11226207926f0f54f8a910f208d1b.lua"))()
