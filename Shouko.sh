@@ -9,4 +9,4 @@ yes | pkg upgrade
 yes | pkg i python
 yes | pkg i python-pip
 pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio
-curl -Ls "https://raw.githubusercontent.com/Wraith1vs11/Rejoin/refs/heads/main/Shouko.py" -o /sdcard/Download/dumbass.py
+curl -Ls "https://raw.githubusercontent.com/Wraith1vs11/Rejoin/refs/heads/main/Shouko.py" -o /sdcard/Download/Shouko.py
