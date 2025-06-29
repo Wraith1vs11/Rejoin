@@ -9,3 +9,4 @@ yes | pkg upgrade
 yes | pkg i python
 yes | pkg i python-pip
 pip install requests psutil prettytable pycryptodome colorama tqdm
+curl -Ls "https://raw.githubusercontent.com/Wraith1vs11/Rejoin/refs/heads/main/Rejoin.py" -o /sdcard/Download/Rejoin.py
