@@ -1,0 +1,12 @@
+game.Players.LocalPlayer.UserId = 7486336430
+
+if game.PlaceId == 136755111277466 then
+    script_key="yTQyUYfZYKvnQQePFEycYvUYRFcaoQmL";
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/JustLevel/goombahub/main/goombahub.lua"))()
+elseif game.PlaceId == 17687504411 then
+    script_key="ngYqBmGxByOQhjvghNnAoWCpbmaiwcui";
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/JustLevel/goombahub/main/goombahub.lua"))()
+else
+    script_key = "EsujILjIErqIxhIxLqDGiYsVBKZFfXjB"
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/JustLevel/goombahub/main/goombahub.lua"))()
+end
