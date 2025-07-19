@@ -1,5 +1,3 @@
-game.Players.LocalPlayer.UserId = 7486336430
-
 if game.PlaceId == 136755111277466 then
     script_key="yTQyUYfZYKvnQQePFEycYvUYRFcaoQmL";
     loadstring(game:HttpGet("https://raw.githubusercontent.com/JustLevel/goombahub/main/goombahub.lua"))()
