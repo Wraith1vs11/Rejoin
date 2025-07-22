@@ -1,0 +1,9 @@
+game.Players.LocalPlayer.UserId = 7486336430
+
+local zkqxwgeyrat = "Nousigi Hub/savedkey"
+local mzjhpykquzj = "wFEYguHIuxmxyKFBGhZPfHlgyTDKyTNP"
+if not isfile(zkqxwgeyrat) or readfile(zkqxwgeyrat) ~= mzjhpykquzj then
+    makefolder("Nousigi Hub")
+    writefile(zkqxwgeyrat, mzjhpykquzj)
+end
+loadstring(game:HttpGet("https://nousigi.com/loader.lua"))()
