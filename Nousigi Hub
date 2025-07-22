@@ -1,7 +1,7 @@
 game.Players.LocalPlayer.UserId = 7486336430
 
 local zkqxwgeyrat = "Nousigi Hub/savedkey"
-local mzjhpykquzj = "wFEYguHIuxmxyKFBGhZPfHlgyTDKyTNP"
+local mzjhpykquzj = "rJmcnVRgMqOkQZzaGNJZQFvyfqKoGNMI"
 if not isfile(zkqxwgeyrat) or readfile(zkqxwgeyrat) ~= mzjhpykquzj then
     makefolder("Nousigi Hub")
     writefile(zkqxwgeyrat, mzjhpykquzj)
