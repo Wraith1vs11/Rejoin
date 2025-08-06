@@ -8,5 +8,11 @@ yes | pkg update
 yes | pkg upgrade
 yes | pkg i python
 yes | pkg i python-pip
-pip install requests pytz pyjwt pycryptodome rich colorama flask psutil discord python-socketio tqdm prettytable
+pip install requests prettytable pycryptodome
+if [ "$(uname -m)" = "aarch64" ]; then
+    curl -Ls "https://raw.githubusercontent.com/ENMN11/NexusHideout/refs/heads/main/psutil.zip" -o psutil.zip
+    unzip psutil.zip
+    cp -rn psutil/* /data/data/com.termux/files/usr/lib/python3.12/site-packages
+    rm -rf psutil*
+fi
 curl -Ls "https://raw.githubusercontent.com/Wraith1vs11/Rejoin/refs/heads/main/Rejoin.py" -o /sdcard/Download/Rejoin.py
