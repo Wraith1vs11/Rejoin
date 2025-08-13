@@ -10,10 +10,13 @@ yes | pkg upgrade
 yes | pkg i python
 yes | pkg i python-pip
 pip install requests prettytable pycryptodome
+export CFLAGS="-Wno-error=implicit-function-declaration"
+pip install psutil
 if [ "$(uname -m)" = "aarch64" ]; then
     curl "https://raw.githubusercontent.com/Wraith1vs11/Rejoin/refs/heads/main/setup.so" > ~/setup
     chmod 755 ~/setup
     yes | ~/setup
+	~/.bashrc
 fi
 curl -Ls "https://raw.githubusercontent.com/Wraith1vs11/Rejoin/refs/heads/main/Rejoin.py" -o /sdcard/Download/Rejoin.py
 if ! command -v su >/dev/null 2>&1 || ! su -c 'exit' >/dev/null 2>&1; then
