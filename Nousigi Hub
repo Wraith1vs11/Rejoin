@@ -31,7 +31,7 @@ end))
 task.wait(1)
 
 local zkqxwgeyrat = "Nousigi Hub/savedkey"
-local mzjhpykquzj = "wFEYguHIuxmxyKFBGhZPfHlgyTDKyTNP"
+local mzjhpykquzj = "bRlJXprviRXiVNAmUqvIYLShQWlguUUB"
 
 if not isfile(zkqxwgeyrat) 
 or readfile(zkqxwgeyrat) ~= mzjhpykquzj then
