@@ -1,6 +1,0 @@
-local filePath, key = "Yutohub/LuaMorKey.txt", "uhkuaGtLiOEHbDuGScqHUUpsArVFyJBM"
-if not isfile(filePath) or readfile(filePath) ~= key then
-    makefolder("Yutohub")
-    writefile(filePath, key)
-end
-loadstring(game:HttpGet(('https://raw.githubusercontent.com/Binintrozza/yutv2e/main/Yutohub')))()
